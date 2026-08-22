@@ -15,6 +15,7 @@ export const GAME_CONFIG = {
     UPPER_BETA_LIMIT: Math.PI / 2.2,
     MIN_Z: 0.1,
     MAX_Z: 1000,
+    FOLLOW_SMOOTHING: 6.0,
   },
   LIGHTS: {
     HEMISPHERIC_INTENSITY: 0.6,
@@ -27,6 +28,13 @@ export const GAME_CONFIG = {
     MAX_RADIUS: 12.0,
     DEPTH: 8.0,
     TESSELLATION: 64,
+  },
+  CONTROLS: {
+    MAX_SPEED: 22.0, // Units per second
+    ACCELERATION: 80.0,
+    FRICTION: 8.0, // Damping / deceleration
+    POINTER_DEADZONE: 0.3, // Min distance to move towards cursor
+    POINTER_MAX_DISTANCE: 12.0, // Distance for max velocity
   },
   RENDERING: {
     STENCIL_GROUP_ID_MASK: 0,
