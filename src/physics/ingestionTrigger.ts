@@ -41,6 +41,18 @@ export class IngestionTrigger {
   }
 
   /**
+   * Invalide les paires de contact statiques en cache dans le moteur Havok WASM
+   * lors du changement de masque de collision d'un corps.
+   */
+  private refreshBodyCollisions(body: any): void {
+    const plugin = this.scene.getPhysicsEngine()?.getPhysicsPlugin() as any;
+    if (plugin?._hknp && plugin?.world && body?._pluginData?.hpBodyId) {
+      plugin._hknp.HP_World_RemoveBody(plugin.world, body._pluginData.hpBodyId);
+      plugin._hknp.HP_World_AddBody(plugin.world, body._pluginData.hpBodyId, false);
+    }
+  }
+
+  /**
    * Met à jour le filtrage de collision et applique les forces centripètes / gravitationnelles.
    */
   public update(_deltaTime: number): void {
@@ -84,22 +96,28 @@ export class IngestionTrigger {
             entity.shape.filterCollideMask = COLLISION_MASKS.PROP | COLLISION_MASKS.WALL | COLLISION_MASKS.SWALLOWED;
             entity.shape.filterMembershipMask = COLLISION_MASKS.SWALLOWED;
 
-            // Boost downward gravity for swift, satisfying plunge
+            // Purge Havok static broadphase contact cache
+            this.refreshBodyCollisions(entity.body);
+
+            // Give immediate downward plunge velocity and extra downward gravity
+            const currentVel = entity.body.getLinearVelocity();
+            entity.body.setLinearVelocity(new Vector3(currentVel.x * 0.5, -4.0, currentVel.z * 0.5));
             entity.body.setGravityFactor(GAME_CONFIG.INGESTION.DOWNWARD_EXTRA_GRAVITY);
 
             this.onEntityFallingObservable.notifyObservers(entity);
           }
 
-          // Apply centripetal suction force towards hole center
+          // Apply centripetal suction force towards hole center + downward pull into abyss
           const safeDist = Math.max(distHorizontal, 0.05);
           const dirX = -dx / safeDist;
           const dirZ = -dz / safeDist;
 
           const mass = entity.definition.mass;
           const suctionMagnitude = GAME_CONFIG.INGESTION.CENTRIPETAL_FORCE * mass;
+          const downwardPull = -9.81 * mass * 1.5;
           const suctionForce = new Vector3(
             dirX * suctionMagnitude,
-            0,
+            downwardPull,
             dirZ * suctionMagnitude
           );
 
@@ -141,6 +159,7 @@ export class IngestionTrigger {
     entity.isFallingInHole = false;
     entity.shape.filterMembershipMask = COLLISION_MASKS.PROP;
     entity.shape.filterCollideMask = COLLISION_MASKS.GROUND | COLLISION_MASKS.PROP | COLLISION_MASKS.WALL;
+    this.refreshBodyCollisions(entity.body);
     entity.body.setGravityFactor(1.0);
   }
 
