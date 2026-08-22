@@ -13,12 +13,13 @@ import { Constants } from '@babylonjs/core/Engines/constants';
 import { PhysicsBody } from '@babylonjs/core/Physics/v2/physicsBody';
 import { PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
 import { PhysicsShapeBox } from '@babylonjs/core/Physics/v2/physicsShape';
-import { GAME_CONFIG } from '../config/constants';
+import { COLLISION_MASKS, GAME_CONFIG } from '../config/constants';
 import { Hole } from '../entities/hole';
 import { HoleController } from '../controllers/holeController';
 import { PropFactory } from '../factories/propFactory';
 import { ArenaSpawner } from '../spawning/arenaSpawner';
 import { SwallowableEntity } from '../entities/swallowableEntity';
+import { IngestionTrigger } from '../physics/ingestionTrigger';
 
 export class SceneManager {
   private scene: Scene;
@@ -31,6 +32,7 @@ export class SceneManager {
   private holeController: HoleController | null = null;
   private propFactory: PropFactory | null = null;
   private arenaSpawner: ArenaSpawner | null = null;
+  private ingestionTrigger: IngestionTrigger | null = null;
 
   constructor(private engine: Engine) {
     this.scene = new Scene(this.engine);
@@ -115,7 +117,7 @@ export class SceneManager {
   }
 
   /**
-   * Crée l'arène de jeu, initialise le Trou, son contrôleur et génère les entités procédurales (Tiers 1 à 3).
+   * Crée l'arène de jeu, initialise le Trou, son contrôleur, les entités et le déclencheur d'ingestion.
    */
   public setupDemoArena(): void {
     // 1. Urban Arena Ground with Stencil test (only renders where stencil != 1)
@@ -141,13 +143,16 @@ export class SceneManager {
     this.groundMesh.receiveShadows = true;
     this.groundMesh.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
 
-    // Ground static physics body
+    // Ground static physics body with collision layer filtering
     const groundShape = new PhysicsShapeBox(
       Vector3.Zero(),
       Quaternion.Identity(),
       new Vector3(GAME_CONFIG.ARENA.SIZE, 0.2, GAME_CONFIG.ARENA.SIZE),
       this.scene
     );
+    groundShape.filterMembershipMask = COLLISION_MASKS.GROUND;
+    groundShape.filterCollideMask = COLLISION_MASKS.PROP;
+
     const groundBody = new PhysicsBody(this.groundMesh, PhysicsMotionType.STATIC, false, this.scene);
     groundBody.shape = groundShape;
     groundBody.setMassProperties({ mass: 0 });
@@ -163,6 +168,13 @@ export class SceneManager {
     this.propFactory = new PropFactory(this.scene, this.shadowGenerator);
     this.arenaSpawner = new ArenaSpawner(this.scene);
     this.arenaSpawner.spawnArena(this.propFactory);
+
+    // 5. Initialize IngestionTrigger for dynamic collision filtering and suction vortex
+    this.ingestionTrigger = new IngestionTrigger(
+      this.scene,
+      this.hole,
+      () => this.getEntities()
+    );
   }
 
   public getScene(): Scene {
@@ -191,6 +203,10 @@ export class SceneManager {
 
   public getArenaSpawner(): ArenaSpawner | null {
     return this.arenaSpawner;
+  }
+
+  public getIngestionTrigger(): IngestionTrigger | null {
+    return this.ingestionTrigger;
   }
 
   public getEntities(): SwallowableEntity[] {

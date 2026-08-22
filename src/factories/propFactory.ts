@@ -8,11 +8,12 @@ import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator'
 import { PhysicsBody } from '@babylonjs/core/Physics/v2/physicsBody';
 import { PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
 import {
+  PhysicsShape,
   PhysicsShapeBox,
   PhysicsShapeCylinder,
   PhysicsShapeSphere,
 } from '@babylonjs/core/Physics/v2/physicsShape';
-import { GAME_CONFIG } from '../config/constants';
+import { COLLISION_MASKS, GAME_CONFIG } from '../config/constants';
 import {
   PropDefinition,
   PropTier,
@@ -44,6 +45,21 @@ export class PropFactory {
     mat.specularColor = specular;
     this.materialCache.set(name, mat);
     return mat;
+  }
+
+  private setupEntity(id: string, mesh: Mesh, shape: PhysicsShape, def: PropDefinition): SwallowableEntity {
+    mesh.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
+    this.shadowGenerator.addShadowCaster(mesh);
+
+    // Configure collision filter masks for Havok
+    shape.filterMembershipMask = COLLISION_MASKS.PROP;
+    shape.filterCollideMask = COLLISION_MASKS.GROUND | COLLISION_MASKS.PROP | COLLISION_MASKS.WALL;
+
+    const body = new PhysicsBody(mesh, PhysicsMotionType.DYNAMIC, false, this.scene);
+    body.shape = shape;
+    body.setMassProperties({ mass: def.mass });
+
+    return new SwallowableEntity(id, mesh, body, shape, def);
   }
 
   public createProp(type: PropType, position: Vector3, rotationY = 0): SwallowableEntity {
@@ -112,8 +128,6 @@ export class PropFactory {
     merged.position.y += 0.4;
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('coneMat', new Color3(1.0, 0.42, 0.05), new Color3(0.3, 0.3, 0.3));
-    merged.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
-    this.shadowGenerator.addShadowCaster(merged);
 
     const shape = new PhysicsShapeCylinder(
       new Vector3(0, -0.4, 0),
@@ -121,11 +135,8 @@ export class PropFactory {
       0.3,
       this.scene
     );
-    const body = new PhysicsBody(merged, PhysicsMotionType.DYNAMIC, false, this.scene);
-    body.shape = shape;
-    body.setMassProperties({ mass: def.mass });
 
-    return new SwallowableEntity(id, merged, body, shape, def);
+    return this.setupEntity(id, merged, shape, def);
   }
 
   private createTrashBin(id: string, position: Vector3, rotationY: number): SwallowableEntity {
@@ -148,8 +159,6 @@ export class PropFactory {
     mesh.position.y += 0.45;
     mesh.rotation.y = rotationY;
     mesh.material = this.getOrCreateMaterial('trashMat', new Color3(0.12, 0.48, 0.28));
-    mesh.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
-    this.shadowGenerator.addShadowCaster(mesh);
 
     const shape = new PhysicsShapeCylinder(
       new Vector3(0, -0.45, 0),
@@ -157,11 +166,8 @@ export class PropFactory {
       0.3,
       this.scene
     );
-    const body = new PhysicsBody(mesh, PhysicsMotionType.DYNAMIC, false, this.scene);
-    body.shape = shape;
-    body.setMassProperties({ mass: def.mass });
 
-    return new SwallowableEntity(id, mesh, body, shape, def);
+    return this.setupEntity(id, mesh, shape, def);
   }
 
   private createWoodenCrate(id: string, position: Vector3, rotationY: number): SwallowableEntity {
@@ -180,15 +186,9 @@ export class PropFactory {
     mesh.position.y += 0.4;
     mesh.rotation.y = rotationY;
     mesh.material = this.getOrCreateMaterial('crateMat', new Color3(0.65, 0.45, 0.25));
-    mesh.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
-    this.shadowGenerator.addShadowCaster(mesh);
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(0.8, 0.8, 0.8), this.scene);
-    const body = new PhysicsBody(mesh, PhysicsMotionType.DYNAMIC, false, this.scene);
-    body.shape = shape;
-    body.setMassProperties({ mass: def.mass });
-
-    return new SwallowableEntity(id, mesh, body, shape, def);
+    return this.setupEntity(id, mesh, shape, def);
   }
 
   private createSmallBush(id: string, position: Vector3, rotationY: number): SwallowableEntity {
@@ -208,15 +208,9 @@ export class PropFactory {
     mesh.position.y += 0.45;
     mesh.rotation.y = rotationY;
     mesh.material = this.getOrCreateMaterial('bushMat', new Color3(0.2, 0.65, 0.18));
-    mesh.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
-    this.shadowGenerator.addShadowCaster(mesh);
 
     const shape = new PhysicsShapeSphere(Vector3.Zero(), 0.5, this.scene);
-    const body = new PhysicsBody(mesh, PhysicsMotionType.DYNAMIC, false, this.scene);
-    body.shape = shape;
-    body.setMassProperties({ mass: def.mass });
-
-    return new SwallowableEntity(id, mesh, body, shape, def);
+    return this.setupEntity(id, mesh, shape, def);
   }
 
   // -------------------------------------------------------------
@@ -244,15 +238,9 @@ export class PropFactory {
     merged.position.y += 0.35;
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('benchMat', new Color3(0.55, 0.32, 0.18));
-    merged.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
-    this.shadowGenerator.addShadowCaster(merged);
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(1.8, 0.7, 0.7), this.scene);
-    const body = new PhysicsBody(merged, PhysicsMotionType.DYNAMIC, false, this.scene);
-    body.shape = shape;
-    body.setMassProperties({ mass: def.mass });
-
-    return new SwallowableEntity(id, merged, body, shape, def);
+    return this.setupEntity(id, merged, shape, def);
   }
 
   private createStreetLamp(id: string, position: Vector3, rotationY: number): SwallowableEntity {
@@ -276,8 +264,6 @@ export class PropFactory {
     merged.position.y += 1.6;
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('lampMat', new Color3(0.18, 0.2, 0.25), new Color3(0.4, 0.4, 0.4));
-    merged.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
-    this.shadowGenerator.addShadowCaster(merged);
 
     const shape = new PhysicsShapeCylinder(
       new Vector3(0, -1.6, 0),
@@ -285,11 +271,8 @@ export class PropFactory {
       0.25,
       this.scene
     );
-    const body = new PhysicsBody(merged, PhysicsMotionType.DYNAMIC, false, this.scene);
-    body.shape = shape;
-    body.setMassProperties({ mass: def.mass });
 
-    return new SwallowableEntity(id, merged, body, shape, def);
+    return this.setupEntity(id, merged, shape, def);
   }
 
   private createSedanCar(id: string, position: Vector3, rotationY: number): SwallowableEntity {
@@ -321,15 +304,9 @@ export class PropFactory {
     ];
     const color = carColors[this.idCounter % carColors.length];
     merged.material = this.getOrCreateMaterial(`carMat_${this.idCounter % carColors.length}`, color, new Color3(0.4, 0.4, 0.4));
-    merged.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
-    this.shadowGenerator.addShadowCaster(merged);
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(2.6, 1.2, 1.4), this.scene);
-    const body = new PhysicsBody(merged, PhysicsMotionType.DYNAMIC, false, this.scene);
-    body.shape = shape;
-    body.setMassProperties({ mass: def.mass });
-
-    return new SwallowableEntity(id, merged, body, shape, def);
+    return this.setupEntity(id, merged, shape, def);
   }
 
   private createLargeTree(id: string, position: Vector3, rotationY: number): SwallowableEntity {
@@ -354,8 +331,6 @@ export class PropFactory {
     merged.position = position.clone();
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('treeMat', new Color3(0.14, 0.52, 0.22));
-    merged.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
-    this.shadowGenerator.addShadowCaster(merged);
 
     const shape = new PhysicsShapeCylinder(
       new Vector3(0, 0, 0),
@@ -363,11 +338,8 @@ export class PropFactory {
       1.1,
       this.scene
     );
-    const body = new PhysicsBody(merged, PhysicsMotionType.DYNAMIC, false, this.scene);
-    body.shape = shape;
-    body.setMassProperties({ mass: def.mass });
 
-    return new SwallowableEntity(id, merged, body, shape, def);
+    return this.setupEntity(id, merged, shape, def);
   }
 
   // -------------------------------------------------------------
@@ -396,15 +368,9 @@ export class PropFactory {
     merged.position = position.clone();
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('truckMat', new Color3(0.88, 0.9, 0.95), new Color3(0.3, 0.3, 0.3));
-    merged.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
-    this.shadowGenerator.addShadowCaster(merged);
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(4.2, 2.0, 1.8), this.scene);
-    const body = new PhysicsBody(merged, PhysicsMotionType.DYNAMIC, false, this.scene);
-    body.shape = shape;
-    body.setMassProperties({ mass: def.mass });
-
-    return new SwallowableEntity(id, merged, body, shape, def);
+    return this.setupEntity(id, merged, shape, def);
   }
 
   private createBusStop(id: string, position: Vector3, rotationY: number): SwallowableEntity {
@@ -429,15 +395,9 @@ export class PropFactory {
     merged.position = position.clone();
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('busStopMat', new Color3(0.2, 0.58, 0.68));
-    merged.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
-    this.shadowGenerator.addShadowCaster(merged);
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(3.0, 2.2, 1.6), this.scene);
-    const body = new PhysicsBody(merged, PhysicsMotionType.DYNAMIC, false, this.scene);
-    body.shape = shape;
-    body.setMassProperties({ mass: def.mass });
-
-    return new SwallowableEntity(id, merged, body, shape, def);
+    return this.setupEntity(id, merged, shape, def);
   }
 
   private createHousePavilion(id: string, position: Vector3, rotationY: number): SwallowableEntity {
@@ -464,14 +424,8 @@ export class PropFactory {
     merged.position = position.clone();
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('houseMat', new Color3(0.78, 0.68, 0.58));
-    merged.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
-    this.shadowGenerator.addShadowCaster(merged);
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(4.5, 3.6, 4.0), this.scene);
-    const body = new PhysicsBody(merged, PhysicsMotionType.DYNAMIC, false, this.scene);
-    body.shape = shape;
-    body.setMassProperties({ mass: def.mass });
-
-    return new SwallowableEntity(id, merged, body, shape, def);
+    return this.setupEntity(id, merged, shape, def);
   }
 }

@@ -5,6 +5,7 @@ import { SceneManager } from './rendering/sceneManager';
 import { Hole } from './entities/hole';
 import { HoleController } from './controllers/holeController';
 import { SwallowableEntity } from './entities/swallowableEntity';
+import { IngestionTrigger } from './physics/ingestionTrigger';
 
 export class GameApp {
   private canvas: HTMLCanvasElement;
@@ -43,7 +44,7 @@ export class GameApp {
     // Initialize Havok Physics WASM
     await this.physicsManager.initialize(scene);
 
-    // Setup initial test arena with Stencil masking, Hole and Procedural Props
+    // Setup initial test arena with Stencil masking, Hole, Procedural Props and Ingestion Trigger
     this.sceneManager.setupDemoArena();
 
     // Setup resize listener
@@ -76,6 +77,10 @@ export class GameApp {
 
   public getHoleController(): HoleController | null {
     return this.sceneManager.getHoleController();
+  }
+
+  public getIngestionTrigger(): IngestionTrigger | null {
+    return this.sceneManager.getIngestionTrigger();
   }
 
   public getEntities(): SwallowableEntity[] {

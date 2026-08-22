@@ -5,7 +5,7 @@ import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { PhysicsBody } from '@babylonjs/core/Physics/v2/physicsBody';
 import { PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
 import { PhysicsShapeBox } from '@babylonjs/core/Physics/v2/physicsShape';
-import { GAME_CONFIG } from '../config/constants';
+import { COLLISION_MASKS, GAME_CONFIG } from '../config/constants';
 import { PropFactory } from '../factories/propFactory';
 import { PropType, SwallowableEntity } from '../entities/swallowableEntity';
 
@@ -61,6 +61,9 @@ export class ArenaSpawner {
       wallMesh.isVisible = false; // Invisible physics barrier
 
       const wallShape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), w.size, this.scene);
+      wallShape.filterMembershipMask = COLLISION_MASKS.WALL;
+      wallShape.filterCollideMask = COLLISION_MASKS.PROP | COLLISION_MASKS.SWALLOWED;
+
       const wallBody = new PhysicsBody(wallMesh, PhysicsMotionType.STATIC, false, this.scene);
       wallBody.shape = wallShape;
       wallBody.setMassProperties({ mass: 0 });
