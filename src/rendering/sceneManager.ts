@@ -4,7 +4,7 @@ import { Engine } from '@babylonjs/core/Engines/engine';
 import { Scene } from '@babylonjs/core/scene';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Color4, Color3 } from '@babylonjs/core/Maths/math.color';
-import { ArcRotateCamera } from '@babylonjs/core/Cameras/arcRotateCamera';
+import { TargetCamera } from '@babylonjs/core/Cameras/targetCamera';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator';
@@ -28,7 +28,7 @@ import { GameManager } from '../gameplay/gameManager';
 
 export class SceneManager {
   private scene: Scene;
-  private camera!: ArcRotateCamera;
+  private camera!: TargetCamera;
   private hemisphericLight!: HemisphericLight;
   private directionalLight!: DirectionalLight;
   private shadowGenerator!: ShadowGenerator;
@@ -82,22 +82,21 @@ export class SceneManager {
   private setupCamera(): void {
     const planetR = GAME_CONFIG.PLANET.RADIUS;
     const initialTarget = new Vector3(0, planetR, 0);
+    const d = GAME_CONFIG.CAMERA.INITIAL_DISTANCE;
+    const pitch = GAME_CONFIG.CAMERA.BASE_PITCH;
+    const initialCamPos = new Vector3(0, planetR + d * Math.sin(pitch), -d * Math.cos(pitch));
 
-    this.camera = new ArcRotateCamera(
+    this.camera = new TargetCamera(
       'mainCamera',
-      GAME_CONFIG.CAMERA.ALPHA,
-      GAME_CONFIG.CAMERA.BETA,
-      GAME_CONFIG.CAMERA.RADIUS,
-      initialTarget,
+      initialCamPos,
       this.scene
     );
 
+    this.camera.setTarget(initialTarget);
+    this.camera.upVector = new Vector3(0, 1, 0);
     this.camera.minZ = GAME_CONFIG.CAMERA.MIN_Z;
     this.camera.maxZ = GAME_CONFIG.CAMERA.MAX_Z;
-    this.camera.lowerBetaLimit = GAME_CONFIG.CAMERA.LOWER_BETA_LIMIT;
-    this.camera.upperBetaLimit = GAME_CONFIG.CAMERA.UPPER_BETA_LIMIT;
-
-    // We do NOT attach pointer orbit to camera so left drag and touch are dedicated to Hole steering
+    this.camera.fov = GAME_CONFIG.CAMERA.FOV;
   }
 
   private setupLighting(): void {
@@ -219,10 +218,9 @@ export class SceneManager {
       this.shadowGenerator
     );
 
-    // 6. Initialize GrowthManager for progression, score and dynamic hole/camera scaling
+    // 6. Initialize GrowthManager for progression, score and dynamic hole scaling
     this.growthManager = new GrowthManager(
       this.scene,
-      this.camera,
       this.hole,
       this.arenaSpawner,
       this.ingestionTrigger,
@@ -249,7 +247,7 @@ export class SceneManager {
     return this.scene;
   }
 
-  public getCamera(): ArcRotateCamera {
+  public getCamera(): TargetCamera {
     return this.camera;
   }
 

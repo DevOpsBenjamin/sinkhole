@@ -1,5 +1,4 @@
 import { Scene } from '@babylonjs/core/scene';
-import { ArcRotateCamera } from '@babylonjs/core/Cameras/arcRotateCamera';
 import { Observable } from '@babylonjs/core/Misc/observable';
 import { Scalar } from '@babylonjs/core/Maths/math.scalar';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
@@ -27,7 +26,6 @@ export interface LevelUpEvent {
  */
 export class GrowthManager {
   private scene: Scene;
-  private camera: ArcRotateCamera;
   private hole: Hole;
   private arenaSpawner: ArenaSpawner;
   private ingestionTrigger: IngestionTrigger;
@@ -49,14 +47,12 @@ export class GrowthManager {
 
   constructor(
     scene: Scene,
-    camera: ArcRotateCamera,
     hole: Hole,
     arenaSpawner: ArenaSpawner,
     ingestionTrigger: IngestionTrigger,
     propFactory: PropFactory | null = null
   ) {
     this.scene = scene;
-    this.camera = camera;
     this.hole = hole;
     this.arenaSpawner = arenaSpawner;
     this.ingestionTrigger = ingestionTrigger;
@@ -76,7 +72,7 @@ export class GrowthManager {
       }
     );
 
-    // 2. Continuous scaling loop (hole mesh + camera zoom)
+    // 2. Continuous scaling loop (hole mesh growth)
     this.renderObserver = this.scene.onBeforeRenderObservable.add(() => {
       const dt = this.scene.getEngine().getDeltaTime() / 1000.0;
       this.update(dt);
@@ -105,7 +101,7 @@ export class GrowthManager {
     // Clean up entity resources immediately from scene & physics engine
     this.arenaSpawner.removeEntity(entity.id);
 
-    // Respawn replacement prop at arena border to maintain density
+    // Respawn replacement prop on sphere to maintain density
     if (this.propFactory) {
       this.respawnReplacementProp(entity);
     }
@@ -154,22 +150,20 @@ export class GrowthManager {
   private respawnReplacementProp(previousEntity: SwallowableEntity): void {
     if (!this.propFactory) return;
 
-    const halfArena = (GAME_CONFIG.ARENA.SIZE / 2) - 5.0;
-    const angle = Math.random() * Math.PI * 2;
-    const distance = halfArena * (0.6 + Math.random() * 0.4);
-    const holePos = this.hole.getPosition();
-    const spawnPos = new Vector3(
-      holePos.x + Math.cos(angle) * distance,
-      0,
-      holePos.z + Math.sin(angle) * distance
+    const planetR = GAME_CONFIG.PLANET.RADIUS;
+    const u = Math.random() * 2 - 1;
+    const theta = Math.random() * Math.PI * 2;
+    const sinPhi = Math.sqrt(Math.max(0, 1 - u * u));
+    const normal = new Vector3(sinPhi * Math.cos(theta), u, sinPhi * Math.sin(theta)).normalize();
+    const surfacePos = normal.scale(planetR);
+    const azimuth = Math.random() * Math.PI * 2;
+
+    const newEntity = this.propFactory.createPropOnSphere(
+      previousEntity.definition.type,
+      surfacePos,
+      normal,
+      azimuth
     );
-
-    // Clamp spawn pos within arena
-    spawnPos.x = Math.max(-halfArena, Math.min(spawnPos.x, halfArena));
-    spawnPos.z = Math.max(-halfArena, Math.min(spawnPos.z, halfArena));
-    spawnPos.y = 0;
-
-    const newEntity = this.propFactory.createProp(previousEntity.definition.type, spawnPos, Math.random() * Math.PI * 2);
     this.arenaSpawner.getEntities().push(newEntity);
   }
 
@@ -180,14 +174,6 @@ export class GrowthManager {
     const growthLerp = Math.min(1.0, deltaTime * GAME_CONFIG.PROGRESSION.GROWTH_LERP_SPEED);
     this.currentRadius = Scalar.Lerp(this.currentRadius, this.targetRadius, growthLerp);
     this.hole.setRadius(this.currentRadius);
-
-    // Smoothly scale camera distance to match larger view
-    const initialRadius = GAME_CONFIG.HOLE.INITIAL_RADIUS;
-    const radiusRatio = this.currentRadius / initialRadius;
-    const targetCameraRadius = GAME_CONFIG.PROGRESSION.BASE_CAMERA_RADIUS * Math.pow(radiusRatio, 0.6);
-
-    const cameraLerp = Math.min(1.0, deltaTime * GAME_CONFIG.PROGRESSION.CAMERA_ZOOM_LERP_SPEED);
-    this.camera.radius = Scalar.Lerp(this.camera.radius, targetCameraRadius, cameraLerp);
   }
 
   // --- Getters ---
@@ -238,7 +224,6 @@ export class GrowthManager {
     this.currentRadius = GAME_CONFIG.HOLE.INITIAL_RADIUS;
     this.targetRadius = GAME_CONFIG.HOLE.INITIAL_RADIUS;
     this.hole.setRadius(this.currentRadius);
-    this.camera.radius = GAME_CONFIG.PROGRESSION.BASE_CAMERA_RADIUS;
   }
 
   public dispose(): void {

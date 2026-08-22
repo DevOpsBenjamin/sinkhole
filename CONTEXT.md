@@ -34,8 +34,14 @@ Le cycle de vie complet d'un objet avalé : détection dans le déclencheur -> c
 ### Jauge de Croissance (*Growth Gauge & Scaling*)
 Le système de progression qui accumule le score et la masse des objets ingérés. À chaque palier franchi, le rayon du trou, le masque stencil, l'Abîme, le trigger physique et le recul de la caméra augmentent proportionnellement et de manière amortie (`Scalar.Lerp`).
 
-### Contrôleur Hybride (*Hybrid Input Controller*)
-Le module d'entrée unifié prenant en charge de manière fluide le Clavier (WASD / ZQSD / Flèches), la Souris (raycast au sol $Y=0$ et drag) et l'Écran Tactile (touch drag) avec accélération, friction et confinement dans l'arène.
+### Contrôleur Sphérique Géodésique (*Spherical Geodesic Controller*)
+Le module de navigation unifié prenant en charge le Clavier (WASD / ZQSD / Flèches), la Souris (raycast sur la sphère) et l'Écran Tactile (touch drag). Il calcule le déplacement par rotations sur Grand Cercle (géodésiques sur $S^2$) sans singularité polaire ni gimbal lock, permettant de circuler librement et indéfiniment à $360^\circ$ sur toute la surface de la planète.
+
+### Caméra Orbitale Révélatrice (*Katamari Revealing Orbital Camera*)
+Le système de caméra orbitale 6-DOF dont le vecteur "Up" est synchronisé dynamiquement avec la normale de surface locale $\mathbf{n} = \frac{\mathbf{P}_{hole}}{\|\mathbf{P}_{hole}\|}$. Au Niveau 1 (Micro Trou), la caméra est en vue rasante intime (7.5 m, pitch $39^\circ$), donnant l'illusion d'un monde plat local. Au fil des paliers de croissance, la caméra recule progressivement jusqu'à l'orbite spatiale ($>60$ m, pitch $66^\circ$), révélant majestueusement la courbure du globe et l'ensemble de la planète.
+
+### Transport Parallèle de Cap (*Parallel Tangent Heading Transport*)
+La technique mathématique de transport du repère d'orientation caméra le long des géodésiques du planétoïde, garantissant que les commandes de direction (Haut/Bas/Gauche/Droite) restent toujours parfaitement intuitives et alignées avec l'écran du joueur quel que soit l'hémisphère parcouru.
 
 ### Interface & Boucle de Jeu (*HUD & Game Loop*)
 L'interface utilisateur native 2D Babylon GUI intégrant le menu de démarrage, le chronomètre arcade de 2 minutes, le score en direct, la jauge de progression, le bilan de fin de partie et le replay sans rechargement de page.
