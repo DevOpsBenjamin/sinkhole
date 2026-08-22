@@ -55,5 +55,20 @@ Le champ de forces gravitationnelles centripètes dirigé en tout point de l'esp
 ### Alignement Tangentiel (*Tangential Surface Alignment*)
 L'orientation angulaire 3D assignée aux entités physiques et aux éléments de surface, alignant leur axe vertical local avec le vecteur normal radial sortant $\mathbf{n} = \frac{\mathbf{P}}{\|\mathbf{P}\|}$, complétée par une rotation d'azimut libre pour un peuplement organique du globe.
 
+### Biomes Concentriques Procéduraux (*Concentric Procedural Biomes*)
+La segmentation spatiale en 4 anneaux concentriques de colatitude $\phi \in [0, \pi]$ depuis le Pôle Nord ($\phi=0$) jusqu'au Pôle Sud ($\phi=\pi$) :
+1. *Parc Intime (Micro)* ($\phi \in [0.08, 0.48]$) : zone intime de démarrage peuplée d'objets micro (cônes, canettes, pots de fleurs, arbustes).
+2. *Quartier Résidentiel (Banlieue)* ($\phi \in [0.42, 1.15]$) : rues pavillonnaires avec voitures, arbres, lampadaires et maisons.
+3. *Mégalopole Urbaine (Équateur)* ($\phi \in [1.05, 2.15]$) : centre-ville dense traversé par des bus, camions, immeubles et blocs de bureaux.
+4. *Complexe Métropolitain & Méga-Structures (Pôle Sud)* ($\phi \in [2.05, 3.08]$) : colosses architecturaux comprenant gratte-ciels monolithiques et tours de télécommunication.
+
+### Échelle Katamari Micro à Giga-Macro (*Micro-to-Giga-Macro Katamari Scale Tiers*)
+La hiérarchie en 5 Tiers d'entités physiques gouvernant la progression continue de taille :
+- *Tier 1 (Micro)* : Canettes, pots de fleurs, cônes, poubelles ($r_{req} = 0.8 - 1.2\text{ m}$).
+- *Tier 2 (Moyen)* : Bancs, lampadaires, voitures citadines, grands arbres ($r_{req} = 1.6 - 2.5\text{ m}$).
+- *Tier 3 (Grand)* : Abribus, camions de livraison, pavillons, bus urbains ($r_{req} = 3.0 - 4.5\text{ m}$).
+- *Tier 4 (Macro)* : Immeubles d'habitation, blocs de bureaux ($r_{req} = 6.0 - 9.0\text{ m}$).
+- *Tier 5 (Giga-Macro)* : Gratte-ciels colossaux (16m), tours de télécommunication (20m) ($r_{req} = 12.0 - 18.0\text{ m}$).
+
 ### Arène de Jeu (*Urban Arena*)
-Le monde planétaire complet sur lequel évoluent le trou et les entités physiques de tous tiers.
+Le monde planétaire complet sur lequel évoluent le trou et les entités physiques de tous tiers réparties par biomes concentriques.
