@@ -12,10 +12,13 @@ import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Constants } from '@babylonjs/core/Engines/constants';
 import { PhysicsBody } from '@babylonjs/core/Physics/v2/physicsBody';
 import { PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
-import { PhysicsShapeBox, PhysicsShapeSphere } from '@babylonjs/core/Physics/v2/physicsShape';
+import { PhysicsShapeBox } from '@babylonjs/core/Physics/v2/physicsShape';
 import { GAME_CONFIG } from '../config/constants';
 import { Hole } from '../entities/hole';
 import { HoleController } from '../controllers/holeController';
+import { PropFactory } from '../factories/propFactory';
+import { ArenaSpawner } from '../spawning/arenaSpawner';
+import { SwallowableEntity } from '../entities/swallowableEntity';
 
 export class SceneManager {
   private scene: Scene;
@@ -26,6 +29,8 @@ export class SceneManager {
   private groundMesh!: Mesh;
   private hole: Hole | null = null;
   private holeController: HoleController | null = null;
+  private propFactory: PropFactory | null = null;
+  private arenaSpawner: ArenaSpawner | null = null;
 
   constructor(private engine: Engine) {
     this.scene = new Scene(this.engine);
@@ -110,7 +115,7 @@ export class SceneManager {
   }
 
   /**
-   * Crée l'arène de jeu avec le sol configuré en test Stencil, initialise le Trou et son contrôleur.
+   * Crée l'arène de jeu, initialise le Trou, son contrôleur et génère les entités procédurales (Tiers 1 à 3).
    */
   public setupDemoArena(): void {
     // 1. Urban Arena Ground with Stencil test (only renders where stencil != 1)
@@ -154,22 +159,10 @@ export class SceneManager {
     // 3. Initialize HoleController for hybrid movement and smooth camera follow
     this.holeController = new HoleController(this.scene, this.camera, this.hole);
 
-    // 4. Sample dynamic props to demonstrate Havok physics and the visual cutout hole
-    const propMat = new StandardMaterial('propMat', this.scene);
-    propMat.diffuseColor = new Color3(0.9, 0.4, 0.2);
-
-    for (let i = 0; i < 6; i++) {
-      const sphere = MeshBuilder.CreateSphere(`testSphere_${i}`, { diameter: 1.2 }, this.scene);
-      sphere.position = new Vector3((i - 2.5) * 3, 3 + i * 1.5, (i % 2 === 0 ? 1 : -1) * 2);
-      sphere.material = propMat;
-      sphere.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
-      this.shadowGenerator.addShadowCaster(sphere);
-
-      const sphereShape = new PhysicsShapeSphere(Vector3.Zero(), 0.6, this.scene);
-      const sphereBody = new PhysicsBody(sphere, PhysicsMotionType.DYNAMIC, false, this.scene);
-      sphereBody.shape = sphereShape;
-      sphereBody.setMassProperties({ mass: 1 });
-    }
+    // 4. Initialize PropFactory and ArenaSpawner for procedural Swallowable Entities (Tiers 1 to 3)
+    this.propFactory = new PropFactory(this.scene, this.shadowGenerator);
+    this.arenaSpawner = new ArenaSpawner(this.scene);
+    this.arenaSpawner.spawnArena(this.propFactory);
   }
 
   public getScene(): Scene {
@@ -190,6 +183,18 @@ export class SceneManager {
 
   public getHoleController(): HoleController | null {
     return this.holeController;
+  }
+
+  public getPropFactory(): PropFactory | null {
+    return this.propFactory;
+  }
+
+  public getArenaSpawner(): ArenaSpawner | null {
+    return this.arenaSpawner;
+  }
+
+  public getEntities(): SwallowableEntity[] {
+    return this.arenaSpawner?.getEntities() ?? [];
   }
 
   public getGround(): Mesh {
