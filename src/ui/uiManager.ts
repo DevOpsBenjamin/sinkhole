@@ -6,16 +6,49 @@ import { TextBlock } from '@babylonjs/gui/2D/controls/textBlock';
 import { Button } from '@babylonjs/gui/2D/controls/button';
 import { StackPanel } from '@babylonjs/gui/2D/controls/stackPanel';
 
-export interface GameOverStats {
+export interface GameSummaryStats {
   score: number;
   swallowedCount: number;
   level: number;
   levelName: string;
+  holeRadius: number;
+  elapsedSeconds: number;
+  cleanupPercent: number;
 }
 
 /**
- * Gestionnaire de l'interface utilisateur 2D Babylon GUI.
- * Gère l'affichage du menu d'accueil, du HUD en jeu et de l'écran Game Over.
+ * Formate le rayon du trou en diamètre métrique Katamari réel (cm -> m -> km).
+ */
+export function formatKatamariMetric(radius: number): string {
+  const diameter = radius * 2;
+  if (diameter < 1.0) {
+    const cm = Math.floor(diameter * 100);
+    const mm = Math.floor((diameter * 1000) % 10);
+    return `${cm}cm ${mm}mm`;
+  } else if (diameter < 1000) {
+    const m = Math.floor(diameter);
+    const cm = Math.floor((diameter * 100) % 100);
+    return `${m}m ${cm.toString().padStart(2, '0')}cm`;
+  } else {
+    const km = (diameter / 1000).toFixed(2);
+    return `${km}km`;
+  }
+}
+
+/**
+ * Formate le temps en chronomètre Speedrun ascendant (MM:SS.CC).
+ */
+export function formatSpeedrunTime(seconds: number): string {
+  const mins = Math.floor(Math.max(0, seconds) / 60);
+  const secs = Math.floor(Math.max(0, seconds) % 60);
+  const centis = Math.floor((Math.max(0, seconds) * 100) % 100);
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${centis.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Gestionnaire de l'interface utilisateur 2D Babylon GUI pour Sinkhole Planet.
+ * Affiche la jauge métrique Katamari, le chronomètre ascendant speedrun, le % d'épuration,
+ * et l'écran de victoire 100% de la planète.
  */
 export class UIManager {
   private advancedTexture: AdvancedDynamicTexture;
@@ -23,17 +56,25 @@ export class UIManager {
   // Screens
   private startScreen!: Rectangle;
   private hudContainer!: Rectangle;
+  private victoryScreen!: Rectangle;
   private gameOverScreen!: Rectangle;
 
   // HUD elements
+  private metricDiameterText!: TextBlock;
+  private levelBadgeText!: TextBlock;
+  private biomeText!: TextBlock;
+  private levelProgressBar!: Rectangle;
   private timerText!: TextBlock;
   private timerBox!: Rectangle;
-  private scoreText!: TextBlock;
-  private countText!: TextBlock;
-  private levelBadgeText!: TextBlock;
-  private levelProgressBar!: Rectangle;
+  private cleanupText!: TextBlock;
+  private scoreCountText!: TextBlock;
   private toastNotification!: Rectangle;
   private toastText!: TextBlock;
+
+  // Victory elements
+  private victoryTimeText!: TextBlock;
+  private victoryDiameterText!: TextBlock;
+  private victoryStatsText!: TextBlock;
 
   // Game Over elements
   private finalScoreText!: TextBlock;
@@ -50,41 +91,41 @@ export class UIManager {
 
     this.createStartScreen();
     this.createHUD();
+    this.createVictoryScreen();
     this.createGameOverScreen();
 
-    // Start with menu visible
     this.showStartScreen();
   }
 
   // -------------------------------------------------------------
-  // START / MENU SCREEN
+  // START / SPEEDRUN MENU SCREEN
   // -------------------------------------------------------------
 
   private createStartScreen(): void {
     this.startScreen = new Rectangle('startScreen');
     this.startScreen.width = 1.0;
     this.startScreen.height = 1.0;
-    this.startScreen.background = 'rgba(12, 14, 24, 0.88)';
+    this.startScreen.background = 'rgba(10, 12, 22, 0.90)';
     this.startScreen.thickness = 0;
     this.startScreen.zIndex = 100;
     this.advancedTexture.addControl(this.startScreen);
 
     const panel = new StackPanel('startPanel');
-    panel.width = '640px';
+    panel.width = '660px';
     panel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
     panel.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
     this.startScreen.addControl(panel);
 
-    // Game Title
-    const title = new TextBlock('startTitle', '🕳️ SINKHOLE');
+    // Title
+    const title = new TextBlock('startTitle', '🪐 SINKHOLE PLANET');
     title.color = '#FFD700';
-    title.fontSize = 58;
+    title.fontSize = 52;
     title.fontFamily = 'Impact, -apple-system, sans-serif';
-    title.height = '70px';
+    title.height = '65px';
     panel.addControl(title);
 
     // Subtitle
-    const subtitle = new TextBlock('startSubtitle', 'Dévorez la ville et devenez gigantesque !');
+    const subtitle = new TextBlock('startSubtitle', 'Mode Speedrun — Nettoyage 100% de la Planète');
     subtitle.color = '#00FFFF';
     subtitle.fontSize = 22;
     subtitle.fontFamily = '-apple-system, BlinkMacSystemFont, sans-serif';
@@ -93,12 +134,12 @@ export class UIManager {
 
     // Instructions Box
     const box = new Rectangle('instructionsBox');
-    box.width = '560px';
-    box.height = '230px';
-    box.background = 'rgba(255, 255, 255, 0.06)';
-    box.color = 'rgba(0, 255, 255, 0.4)';
+    box.width = '580px';
+    box.height = '240px';
+    box.background = 'rgba(255, 255, 255, 0.05)';
+    box.color = 'rgba(0, 255, 255, 0.35)';
     box.thickness = 1;
-    box.cornerRadius = 12;
+    box.cornerRadius = 14;
     box.paddingTop = '15px';
     box.paddingBottom = '15px';
     panel.addControl(box);
@@ -108,49 +149,49 @@ export class UIManager {
     instructionsStack.paddingRight = '20px';
     box.addControl(instructionsStack);
 
-    const line1 = new TextBlock('inst1', '🎮 CONTRÔLES :');
+    const line1 = new TextBlock('inst1', '🎮 CONTRÔLES SPHÉRIQUES 360° :');
     line1.color = '#FFFFFF';
     line1.fontSize = 18;
     line1.fontStyle = 'bold';
     line1.height = '28px';
     instructionsStack.addControl(line1);
 
-    const line2 = new TextBlock('inst2', '🖱️ Souris : Déplacez le curseur pour diriger le trou');
+    const line2 = new TextBlock('inst2', '⌨️ Clavier : ZQSD / WASD / Flèches directionnelles');
     line2.color = '#D0D8E8';
     line2.fontSize = 16;
     line2.height = '26px';
     instructionsStack.addControl(line2);
 
-    const line3 = new TextBlock('inst3', '📱 Tactile : Glissez votre doigt sur l\'écran');
+    const line3 = new TextBlock('inst3', '🖱️ Souris & Touch : Dirigez le trou par drag sur le globe');
     line3.color = '#D0D8E8';
     line3.fontSize = 16;
     line3.height = '26px';
     instructionsStack.addControl(line3);
 
-    const line4 = new TextBlock('inst4', '⌨️ Clavier : Touches ZQSD / WASD / Flèches');
-    line4.color = '#D0D8E8';
+    const line4 = new TextBlock('inst4', '📐 Échelle Katamari : Du micro (80cm) au colossal (>30m)');
+    line4.color = '#00FFFF';
     line4.fontSize = 16;
     line4.height = '26px';
     instructionsStack.addControl(line4);
 
-    const line5 = new TextBlock('inst5', '⏱️ Défi : 2 minutes pour faire grossir le trou et tout engloutir !');
-    line5.color = '#FFCC00';
+    const line5 = new TextBlock('inst5', '⚡ Défi : Dévorez 100% de la planète le plus vite possible !');
+    line5.color = '#FFD700';
     line5.fontSize = 16;
     line5.fontStyle = 'bold';
     line5.height = '30px';
     instructionsStack.addControl(line5);
 
     // Play Button
-    const playBtn = Button.CreateSimpleButton('playBtn', '▶️ JOUER (2 MIN)');
-    playBtn.width = '280px';
-    playBtn.height = '64px';
-    playBtn.color = '#FFFFFF';
-    playBtn.background = '#00B4D8';
-    playBtn.cornerRadius = 32;
-    playBtn.fontSize = 24;
+    const playBtn = Button.CreateSimpleButton('playBtn', '⚡ DÉMARRER LE SPEEDRUN');
+    playBtn.width = '380px';
+    playBtn.height = '60px';
+    playBtn.color = '#0B132B';
+    playBtn.background = '#00E5FF';
+    playBtn.cornerRadius = 30;
+    playBtn.fontSize = 20;
     playBtn.fontStyle = 'bold';
     playBtn.thickness = 2;
-    playBtn.paddingTop = '15px';
+    playBtn.top = '20px';
     playBtn.hoverCursor = 'pointer';
 
     playBtn.onPointerClickObservable.add(() => {
@@ -175,118 +216,136 @@ export class UIManager {
     this.hudContainer.isVisible = false;
     this.advancedTexture.addControl(this.hudContainer);
 
-    // 1. Top Left: Level & Progression Bar
-    const levelBox = new Rectangle('levelBox');
-    levelBox.width = '320px';
-    levelBox.height = '80px';
-    levelBox.background = 'rgba(15, 18, 30, 0.75)';
-    levelBox.color = 'rgba(0, 255, 255, 0.3)';
-    levelBox.thickness = 1;
-    levelBox.cornerRadius = 10;
-    levelBox.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    levelBox.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    levelBox.left = '30px';
-    levelBox.top = '25px';
-    this.hudContainer.addControl(levelBox);
+    // 1. Top Left: Katamari Metric Gauge, Level & Biome
+    const metricBox = new Rectangle('metricBox');
+    metricBox.width = '360px';
+    metricBox.height = '110px';
+    metricBox.background = 'rgba(12, 15, 26, 0.82)';
+    metricBox.color = 'rgba(0, 255, 255, 0.35)';
+    metricBox.thickness = 1;
+    metricBox.cornerRadius = 12;
+    metricBox.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    metricBox.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    metricBox.left = '30px';
+    metricBox.top = '25px';
+    this.hudContainer.addControl(metricBox);
 
-    const levelStack = new StackPanel('levelStack');
-    levelStack.paddingLeft = '15px';
-    levelStack.paddingRight = '15px';
-    levelBox.addControl(levelStack);
+    const metricStack = new StackPanel('metricStack');
+    metricStack.paddingLeft = '15px';
+    metricStack.paddingRight = '15px';
+    metricBox.addControl(metricStack);
 
+    // Metric diameter title
+    this.metricDiameterText = new TextBlock('metricDiameter', '📏 2m 00cm');
+    this.metricDiameterText.color = '#00FFFF';
+    this.metricDiameterText.fontSize = 26;
+    this.metricDiameterText.fontStyle = 'bold';
+    this.metricDiameterText.height = '34px';
+    this.metricDiameterText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    metricStack.addControl(this.metricDiameterText);
+
+    // Level badge
     this.levelBadgeText = new TextBlock('levelBadge', '⭐ NIVEAU 1 — Micro Trou');
-    this.levelBadgeText.color = '#00FFFF';
-    this.levelBadgeText.fontSize = 18;
-    this.levelBadgeText.fontStyle = 'bold';
-    this.levelBadgeText.height = '32px';
+    this.levelBadgeText.color = '#FFFFFF';
+    this.levelBadgeText.fontSize = 16;
+    this.levelBadgeText.height = '24px';
     this.levelBadgeText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    levelStack.addControl(this.levelBadgeText);
+    metricStack.addControl(this.levelBadgeText);
 
+    // Biome location
+    this.biomeText = new TextBlock('biomeText', '📍 Parc Intime');
+    this.biomeText.color = '#A0C4E8';
+    this.biomeText.fontSize = 14;
+    this.biomeText.height = '20px';
+    this.biomeText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    metricStack.addControl(this.biomeText);
+
+    // Progress bar
     const barBg = new Rectangle('progressBarBg');
-    barBg.width = '280px';
-    barBg.height = '14px';
+    barBg.width = '320px';
+    barBg.height = '10px';
     barBg.background = 'rgba(255, 255, 255, 0.15)';
     barBg.color = 'transparent';
-    barBg.cornerRadius = 7;
+    barBg.cornerRadius = 5;
     barBg.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    levelStack.addControl(barBg);
+    barBg.top = '4px';
+    metricStack.addControl(barBg);
 
     this.levelProgressBar = new Rectangle('progressBarFill');
     this.levelProgressBar.width = '0px';
-    this.levelProgressBar.height = '14px';
+    this.levelProgressBar.height = '10px';
     this.levelProgressBar.background = '#00E5FF';
     this.levelProgressBar.color = 'transparent';
-    this.levelProgressBar.cornerRadius = 7;
+    this.levelProgressBar.cornerRadius = 5;
     this.levelProgressBar.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
     barBg.addControl(this.levelProgressBar);
 
-    // 2. Top Center: Timer Clock Pill
+    // 2. Top Center: Speedrun Ascending Chronometer
     this.timerBox = new Rectangle('timerBox');
-    this.timerBox.width = '180px';
+    this.timerBox.width = '200px';
     this.timerBox.height = '65px';
-    this.timerBox.background = 'rgba(15, 18, 30, 0.85)';
+    this.timerBox.background = 'rgba(12, 15, 26, 0.85)';
     this.timerBox.color = '#00B4D8';
     this.timerBox.thickness = 2;
-    this.timerBox.cornerRadius = 16;
+    this.timerBox.cornerRadius = 18;
     this.timerBox.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
     this.timerBox.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
     this.timerBox.top = '25px';
     this.hudContainer.addControl(this.timerBox);
 
-    this.timerText = new TextBlock('timerText', '⏱️ 02:00');
+    this.timerText = new TextBlock('timerText', '⏱️ 00:00.00');
     this.timerText.color = '#FFFFFF';
-    this.timerText.fontSize = 28;
+    this.timerText.fontSize = 24;
+    this.timerText.fontFamily = 'Courier New, monospace';
     this.timerText.fontStyle = 'bold';
     this.timerBox.addControl(this.timerText);
 
-    // 3. Top Right: Score & Count Card
-    const scoreBox = new Rectangle('scoreBox');
-    scoreBox.width = '260px';
-    scoreBox.height = '80px';
-    scoreBox.background = 'rgba(15, 18, 30, 0.75)';
-    scoreBox.color = 'rgba(255, 215, 0, 0.3)';
-    scoreBox.thickness = 1;
-    scoreBox.cornerRadius = 10;
-    scoreBox.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
-    scoreBox.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    scoreBox.left = '-30px';
-    scoreBox.top = '25px';
-    this.hudContainer.addControl(scoreBox);
+    // 3. Top Right: Cleanup Percentage & Score
+    const cleanupBox = new Rectangle('cleanupBox');
+    cleanupBox.width = '360px';
+    cleanupBox.height = '95px';
+    cleanupBox.background = 'rgba(12, 15, 26, 0.82)';
+    cleanupBox.color = 'rgba(255, 215, 0, 0.35)';
+    cleanupBox.thickness = 1;
+    cleanupBox.cornerRadius = 12;
+    cleanupBox.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    cleanupBox.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    cleanupBox.left = '-30px';
+    cleanupBox.top = '25px';
+    this.hudContainer.addControl(cleanupBox);
 
-    const scoreStack = new StackPanel('scoreStack');
-    scoreStack.paddingRight = '15px';
-    scoreBox.addControl(scoreStack);
+    this.cleanupText = new TextBlock('cleanupText', '🌍 0.0% NETTOYÉ');
+    this.cleanupText.color = '#FFD700';
+    this.cleanupText.fontSize = 22;
+    this.cleanupText.fontStyle = 'bold';
+    this.cleanupText.height = '32px';
+    this.cleanupText.top = '-14px';
+    this.cleanupText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    cleanupBox.addControl(this.cleanupText);
 
-    this.scoreText = new TextBlock('scoreText', '💎 0 PTS');
-    this.scoreText.color = '#FFD700';
-    this.scoreText.fontSize = 26;
-    this.scoreText.fontStyle = 'bold';
-    this.scoreText.height = '38px';
-    this.scoreText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
-    scoreStack.addControl(this.scoreText);
-
-    this.countText = new TextBlock('countText', '0 objets avalés');
-    this.countText.color = '#A0B0C8';
-    this.countText.fontSize = 16;
-    this.countText.height = '24px';
-    this.countText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
-    scoreStack.addControl(this.countText);
+    this.scoreCountText = new TextBlock('scoreCountText', '💎 0 PTS • 0 objets');
+    this.scoreCountText.color = '#D0D8E8';
+    this.scoreCountText.fontSize = 16;
+    this.scoreCountText.height = '24px';
+    this.scoreCountText.top = '16px';
+    this.scoreCountText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    cleanupBox.addControl(this.scoreCountText);
 
     // 4. Center Toast Notification (Level Up)
     this.toastNotification = new Rectangle('toastBox');
-    this.toastNotification.width = '420px';
+    this.toastNotification.width = '480px';
     this.toastNotification.height = '60px';
-    this.toastNotification.background = 'rgba(0, 229, 255, 0.9)';
+    this.toastNotification.background = 'rgba(0, 229, 255, 0.92)';
     this.toastNotification.color = '#FFFFFF';
     this.toastNotification.thickness = 2;
     this.toastNotification.cornerRadius = 30;
     this.toastNotification.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
     this.toastNotification.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    this.toastNotification.top = '110px';
+    this.toastNotification.top = '115px';
     this.toastNotification.isVisible = false;
     this.hudContainer.addControl(this.toastNotification);
 
-    this.toastText = new TextBlock('toastText', '🎉 LEVEL UP !');
+    this.toastText = new TextBlock('toastText', '🎉 NOUVEAU NIVEAU !');
     this.toastText.color = '#0B132B';
     this.toastText.fontSize = 22;
     this.toastText.fontStyle = 'bold';
@@ -294,7 +353,100 @@ export class UIManager {
   }
 
   // -------------------------------------------------------------
-  // GAME OVER SCREEN
+  // 100% VICTORY SCREEN
+  // -------------------------------------------------------------
+
+  private createVictoryScreen(): void {
+    this.victoryScreen = new Rectangle('victoryScreen');
+    this.victoryScreen.width = 1.0;
+    this.victoryScreen.height = 1.0;
+    this.victoryScreen.background = 'rgba(8, 12, 24, 0.94)';
+    this.victoryScreen.thickness = 0;
+    this.victoryScreen.zIndex = 100;
+    this.victoryScreen.isVisible = false;
+    this.advancedTexture.addControl(this.victoryScreen);
+
+    const panel = new StackPanel('victoryPanel');
+    panel.width = '680px';
+    panel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    panel.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+    this.victoryScreen.addControl(panel);
+
+    // Title
+    const title = new TextBlock('vicTitle', '👑 PLANÈTE NETTOYÉE À 100% !');
+    title.color = '#FFD700';
+    title.fontSize = 48;
+    title.fontFamily = 'Impact, -apple-system, sans-serif';
+    title.height = '65px';
+    panel.addControl(title);
+
+    const sub = new TextBlock('vicSub', '🏆 VICTOIRE SPEEDRUN PLANÉTAIRE !');
+    sub.color = '#00FFFF';
+    sub.fontSize = 22;
+    sub.fontStyle = 'bold';
+    sub.height = '35px';
+    panel.addControl(sub);
+
+    // Stats Box
+    const statsBox = new Rectangle('vicStatsBox');
+    statsBox.width = '560px';
+    statsBox.height = '200px';
+    statsBox.background = 'rgba(255, 255, 255, 0.06)';
+    statsBox.color = 'rgba(255, 215, 0, 0.5)';
+    statsBox.thickness = 2;
+    statsBox.cornerRadius = 16;
+    statsBox.paddingTop = '15px';
+    statsBox.paddingBottom = '15px';
+    panel.addControl(statsBox);
+
+    const statsStack = new StackPanel('vicStatsStack');
+    statsBox.addControl(statsStack);
+
+    this.victoryTimeText = new TextBlock('vicTime', '⏱️ TEMPS SPEEDRUN : 00:00.00');
+    this.victoryTimeText.color = '#00FF66';
+    this.victoryTimeText.fontSize = 28;
+    this.victoryTimeText.fontStyle = 'bold';
+    this.victoryTimeText.fontFamily = 'Courier New, monospace';
+    this.victoryTimeText.height = '42px';
+    statsStack.addControl(this.victoryTimeText);
+
+    this.victoryDiameterText = new TextBlock('vicDiameter', '📏 DIAMÈTRE FINAL : 36m 00cm');
+    this.victoryDiameterText.color = '#00FFFF';
+    this.victoryDiameterText.fontSize = 24;
+    this.victoryDiameterText.fontStyle = 'bold';
+    this.victoryDiameterText.height = '38px';
+    statsStack.addControl(this.victoryDiameterText);
+
+    this.victoryStatsText = new TextBlock('vicStats', '💎 3,500 PTS • 150 objets engloutis');
+    this.victoryStatsText.color = '#FFFFFF';
+    this.victoryStatsText.fontSize = 20;
+    this.victoryStatsText.height = '34px';
+    statsStack.addControl(this.victoryStatsText);
+
+    // Replay Button
+    const restartBtn = Button.CreateSimpleButton('restartVicBtn', '🔄 NOUVEAU RUN SPEEDRUN');
+    restartBtn.width = '340px';
+    restartBtn.height = '65px';
+    restartBtn.color = '#0B132B';
+    restartBtn.background = '#FFD700';
+    restartBtn.cornerRadius = 32;
+    restartBtn.fontSize = 22;
+    restartBtn.fontStyle = 'bold';
+    restartBtn.thickness = 2;
+    restartBtn.paddingTop = '20px';
+    restartBtn.hoverCursor = 'pointer';
+
+    restartBtn.onPointerClickObservable.add(() => {
+      if (this.onRestartCallback) {
+        this.onRestartCallback();
+      }
+    });
+
+    panel.addControl(restartBtn);
+  }
+
+  // -------------------------------------------------------------
+  // GAME OVER SCREEN (TIME EXPIRED)
   // -------------------------------------------------------------
 
   private createGameOverScreen(): void {
@@ -313,14 +465,14 @@ export class UIManager {
     panel.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
     this.gameOverScreen.addControl(panel);
 
-    const title = new TextBlock('goTitle', '🏁 TEMPS ÉCOULÉ !');
+    const title = new TextBlock('goTitle', '⏱️ TEMPS ÉCOULÉ !');
     title.color = '#FF4D6D';
     title.fontSize = 54;
     title.fontFamily = 'Impact, -apple-system, sans-serif';
     title.height = '65px';
     panel.addControl(title);
 
-    const sub = new TextBlock('goSub', 'Bilan de votre massacre urbain :');
+    const sub = new TextBlock('goSub', 'Bilan de votre run planétaire :');
     sub.color = '#A0B0C8';
     sub.fontSize = 20;
     sub.height = '35px';
@@ -343,9 +495,9 @@ export class UIManager {
 
     this.finalScoreText = new TextBlock('finalScore', '🏆 SCORE : 0 PTS');
     this.finalScoreText.color = '#FFD700';
-    this.finalScoreText.fontSize = 36;
+    this.finalScoreText.fontSize = 32;
     this.finalScoreText.fontStyle = 'bold';
-    this.finalScoreText.height = '50px';
+    this.finalScoreText.height = '46px';
     statsStack.addControl(this.finalScoreText);
 
     this.finalStatsText = new TextBlock('finalStats', '0 objets dévorés • Niveau 1');
@@ -391,56 +543,61 @@ export class UIManager {
   public showStartScreen(): void {
     this.startScreen.isVisible = true;
     this.hudContainer.isVisible = false;
+    this.victoryScreen.isVisible = false;
     this.gameOverScreen.isVisible = false;
   }
 
   public showHUD(): void {
     this.startScreen.isVisible = false;
     this.hudContainer.isVisible = true;
+    this.victoryScreen.isVisible = false;
     this.gameOverScreen.isVisible = false;
   }
 
-  public showGameOver(stats: GameOverStats): void {
+  public showVictory(stats: GameSummaryStats): void {
     this.startScreen.isVisible = false;
     this.hudContainer.isVisible = false;
+    this.victoryScreen.isVisible = true;
+    this.gameOverScreen.isVisible = false;
+
+    this.victoryTimeText.text = `⏱️ TEMPS SPEEDRUN : ${formatSpeedrunTime(stats.elapsedSeconds)}`;
+    this.victoryDiameterText.text = `📏 DIAMÈTRE FINAL : ${formatKatamariMetric(stats.holeRadius)}`;
+    this.victoryStatsText.text = `💎 ${stats.score.toLocaleString()} PTS • ${stats.swallowedCount} objets engloutis`;
+  }
+
+  public showGameOver(stats: GameSummaryStats): void {
+    this.startScreen.isVisible = false;
+    this.hudContainer.isVisible = false;
+    this.victoryScreen.isVisible = false;
     this.gameOverScreen.isVisible = true;
 
-    this.finalScoreText.text = `🏆 SCORE : ${stats.score.toLocaleString()} PTS`;
-    this.finalStatsText.text = `${stats.swallowedCount} objets dévorés • ${stats.levelName}`;
+    this.finalScoreText.text = `🏆 SCORE : ${stats.score.toLocaleString()} PTS (${stats.cleanupPercent.toFixed(1)}%)`;
+    this.finalStatsText.text = `${stats.swallowedCount} objets dévorés • ${formatKatamariMetric(stats.holeRadius)}`;
   }
 
-  public updateTimer(remainingSeconds: number): void {
-    const mins = Math.floor(Math.max(0, remainingSeconds) / 60);
-    const secs = Math.floor(Math.max(0, remainingSeconds) % 60);
-    const formatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    this.timerText.text = `⏱️ ${formatted}`;
-
-    // Under 15s warning: turn red
-    if (remainingSeconds <= 15) {
-      this.timerBox.color = '#FF3366';
-      this.timerText.color = '#FF3366';
-    } else {
-      this.timerBox.color = '#00B4D8';
-      this.timerText.color = '#FFFFFF';
-    }
+  public updateSpeedrunTimer(elapsedSeconds: number): void {
+    this.timerText.text = `⏱️ ${formatSpeedrunTime(elapsedSeconds)}`;
   }
 
-  public updateScore(score: number, swallowedCount: number): void {
-    this.scoreText.text = `💎 ${score.toLocaleString()} PTS`;
-    this.countText.text = `${swallowedCount} objets avalés`;
-  }
-
-  public updateLevel(level: number, levelName: string, progressRatio: number): void {
+  public updateKatamariMetrics(radius: number, level: number, levelName: string, progressRatio: number, biomeName: string): void {
+    this.metricDiameterText.text = `📏 ${formatKatamariMetric(radius)}`;
     this.levelBadgeText.text = `⭐ NIVEAU ${level} — ${levelName}`;
-    const totalBarWidth = 280;
+    this.biomeText.text = `📍 ${biomeName}`;
+
+    const totalBarWidth = 320;
     const fillWidth = Math.max(0, Math.min(1.0, progressRatio)) * totalBarWidth;
     this.levelProgressBar.width = `${fillWidth}px`;
   }
 
+  public updateCleanupStats(score: number, swallowedCount: number, cleanupPercent: number): void {
+    this.cleanupText.text = `🌍 ${cleanupPercent.toFixed(1)}% NETTOYÉ`;
+    this.scoreCountText.text = `💎 ${score.toLocaleString()} PTS • ${swallowedCount} objets`;
+  }
+
   private toastTimeout: any = null;
 
-  public showLevelUpToast(levelName: string): void {
-    this.toastText.text = `🎉 NOUVEAU NIVEAU : ${levelName.toUpperCase()} !`;
+  public showLevelUpToast(levelName: string, radius: number): void {
+    this.toastText.text = `🎉 ${levelName.toUpperCase()} ! (${formatKatamariMetric(radius)})`;
     this.toastNotification.isVisible = true;
 
     if (this.toastTimeout) {
@@ -460,3 +617,4 @@ export class UIManager {
     this.advancedTexture.dispose();
   }
 }
+

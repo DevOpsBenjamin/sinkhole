@@ -43,8 +43,18 @@ Le système de caméra orbitale 6-DOF dont le vecteur "Up" est synchronisé dyna
 ### Transport Parallèle de Cap (*Parallel Tangent Heading Transport*)
 La technique mathématique de transport du repère d'orientation caméra le long des géodésiques du planétoïde, garantissant que les commandes de direction (Haut/Bas/Gauche/Droite) restent toujours parfaitement intuitives et alignées avec l'écran du joueur quel que soit l'hémisphère parcouru.
 
-### Interface & Boucle de Jeu (*HUD & Game Loop*)
-L'interface utilisateur native 2D Babylon GUI intégrant le menu de démarrage, le chronomètre arcade de 2 minutes, le score en direct, la jauge de progression, le bilan de fin de partie et le replay sans rechargement de page.
+### Interface & Boucle de Jeu Speedrun (*Speedrun HUD & Game Loop*)
+L'interface utilisateur native 2D Babylon GUI pour le mode Speedrun, intégrant :
+- Le chronomètre ascendant de haute précision avec centièmes de seconde (`MM:SS.CC`).
+- La jauge métrique Katamari en unités réelles (cm $\to$ m $\to$ km) avec indicateur du Biome courant.
+- La jauge d'épuration de la planète en pourcentage ($0.0\%$ à $100.0\%$).
+- L'écran de victoire finale 100% avec récapitulatif du temps Speedrun, diamètre final, score et relance de run sans rechargement.
+
+### Jauge Métrique Katamari (*Real-world Metric Katamari Gauge*)
+L'affichage en temps réel du diamètre métrique réel du trou ($D = 2 \times r_{hole}$) inspiré de Katamari Damacy :
+- Diamètre $< 1.0\text{ m}$ : affichage en centimètres et millimètres (ex: `80cm 0mm`).
+- Diamètre $\in [1.0\text{ m}, 1000\text{ m}[$ : affichage en mètres et centimètres (ex: `2m 00cm`, `36m 00cm`).
+- Diamètre $\ge 1000\text{ m}$ : affichage en kilomètres (ex: `1.20km`).
 
 ### Planétoïde Sphérique (*Spherical Planetoid / Planet Arena*)
 L'environnement global de jeu matérialisé par une planète 3D sphérique continue (rayon $R = 35.0$ m, circonférence $\approx 220$ m) dotée d'un collider physique Havok sphérique statique, formant une surface continue sans bords ni murs artificiels.

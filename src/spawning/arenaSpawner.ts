@@ -167,12 +167,15 @@ export class ArenaSpawner {
     const normal = pos.clone().normalize();
     const colatitude = Math.acos(Math.max(-1, Math.min(1, normal.y)));
 
-    for (const biome of CONCENTRIC_BIOMES) {
-      if (colatitude >= biome.minColatitude && colatitude <= biome.maxColatitude) {
-        return biome.name;
-      }
+    if (colatitude < 0.48) {
+      return CONCENTRIC_BIOMES[0].name;
+    } else if (colatitude < 1.15) {
+      return CONCENTRIC_BIOMES[1].name;
+    } else if (colatitude < 2.15) {
+      return CONCENTRIC_BIOMES[2].name;
+    } else {
+      return CONCENTRIC_BIOMES[3].name;
     }
-    return 'Surface Planétaire';
   }
 
   public getEntities(): SwallowableEntity[] {
