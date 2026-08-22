@@ -1,6 +1,7 @@
 import { Scene } from '@babylonjs/core/scene';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Observable } from '@babylonjs/core/Misc/observable';
+import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator';
 import { COLLISION_MASKS, GAME_CONFIG } from '../config/constants';
 import { Hole } from '../entities/hole';
 import { SwallowableEntity } from '../entities/swallowableEntity';
@@ -8,12 +9,14 @@ import { SwallowableEntity } from '../entities/swallowableEntity';
 /**
  * Déclencheur volumétrique d'ingestion et gestionnaire de filtrage dynamique Havok.
  * Synchronisé en permanence avec la position et le rayon du Trou.
- * Gère la chute 3D prolongée, les collisions de parois de cylindre, les culbutes angulaires et la disparition en profondeur.
+ * Gère la chute physique naturelle (gravité 1.0, sans accélération artificielle ni réduction d'échelle),
+ * la suppression des ombres portées en sous-sol, et la disparition en fond de puits.
  */
 export class IngestionTrigger {
   private scene: Scene;
   private hole: Hole;
   private getEntities: () => SwallowableEntity[];
+  private shadowGenerator: ShadowGenerator | null = null;
   private isEnabled = true;
 
   public readonly onEntityFallingObservable = new Observable<SwallowableEntity>();
@@ -21,10 +24,16 @@ export class IngestionTrigger {
 
   private renderObserver: any = null;
 
-  constructor(scene: Scene, hole: Hole, getEntities: () => SwallowableEntity[]) {
+  constructor(
+    scene: Scene,
+    hole: Hole,
+    getEntities: () => SwallowableEntity[],
+    shadowGenerator: ShadowGenerator | null = null
+  ) {
     this.scene = scene;
     this.hole = hole;
     this.getEntities = getEntities;
+    this.shadowGenerator = shadowGenerator;
 
     this.registerSimulationLoop();
   }
@@ -41,6 +50,10 @@ export class IngestionTrigger {
     this.isEnabled = enabled;
   }
 
+  public setShadowGenerator(shadowGenerator: ShadowGenerator | null): void {
+    this.shadowGenerator = shadowGenerator;
+  }
+
   /**
    * Invalide les paires de contact statiques en cache dans le moteur Havok WASM
    * lors du changement de masque de collision d'un corps.
@@ -54,7 +67,7 @@ export class IngestionTrigger {
   }
 
   /**
-   * Met à jour le filtrage de collision et applique les forces centripètes / gravitationnelles.
+   * Met à jour le filtrage de collision et applique les forces centripètes / gravitationnelles naturelles.
    */
   public update(_deltaTime: number): void {
     const holePos = this.hole.getPosition();
@@ -93,6 +106,11 @@ export class IngestionTrigger {
           if (!entity.isFallingInHole) {
             entity.isFallingInHole = true;
 
+            // Remove surface shadow casting so no phantom shadows are cast onto surface ground
+            if (this.shadowGenerator) {
+              this.shadowGenerator.removeShadowCaster(entity.mesh);
+            }
+
             // Remove GROUND collision mask so the entity drops freely through ground plane
             entity.shape.filterCollideMask = COLLISION_MASKS.WALL | COLLISION_MASKS.PROP | COLLISION_MASKS.SWALLOWED;
             entity.shape.filterMembershipMask = COLLISION_MASKS.SWALLOWED;
@@ -100,14 +118,14 @@ export class IngestionTrigger {
             // Purge Havok static broadphase contact cache
             this.refreshBodyCollisions(entity.body);
 
-            // Gentle downward plunge entry velocity
+            // Natural entry velocity with standard gravity (no extra downward acceleration)
             const currentVel = entity.body.getLinearVelocity();
-            entity.body.setLinearVelocity(new Vector3(currentVel.x * 0.4, -1.2, currentVel.z * 0.4));
+            entity.body.setLinearVelocity(new Vector3(currentVel.x * 0.4, Math.min(currentVel.y, -0.2), currentVel.z * 0.4));
             entity.body.setGravityFactor(GAME_CONFIG.INGESTION.DOWNWARD_EXTRA_GRAVITY);
 
-            // Apply 3D tumbling torque so prop spins and rolls as it falls
+            // Apply 3D tumbling torque so prop spins and rolls naturally as it falls
             const mass = entity.definition.mass;
-            const tumbleStrength = 2.5 * mass;
+            const tumbleStrength = 2.0 * mass;
             entity.body.applyAngularImpulse(
               new Vector3(
                 (Math.random() - 0.5) * tumbleStrength,
@@ -119,23 +137,22 @@ export class IngestionTrigger {
             this.onEntityFallingObservable.notifyObservers(entity);
           }
 
-          // Apply centripetal suction force towards hole center + downward pull into abyss
+          // Gentle horizontal centripetal guidance towards hole center (no extra downward pull)
           const safeDist = Math.max(distHorizontal, 0.05);
           const dirX = -dx / safeDist;
           const dirZ = -dz / safeDist;
 
           const mass = entity.definition.mass;
           const suctionMagnitude = GAME_CONFIG.INGESTION.CENTRIPETAL_FORCE * mass;
-          const downwardPull = -9.81 * mass * 0.35;
           const suctionForce = new Vector3(
             dirX * suctionMagnitude,
-            downwardPull,
+            0, // Pure natural gravity handles the vertical fall!
             dirZ * suctionMagnitude
           );
 
           entity.body.applyForce(suctionForce, entityPos);
 
-          // Containment inside cylinder: keep within cylinder inner boundary
+          // Physical containment inside cylinder
           const maxInnerR = holeRadius * 0.92;
           if (distHorizontal > maxInnerR && entityPos.y < -0.2) {
             const currentVel = entity.body.getLinearVelocity();
@@ -143,18 +160,11 @@ export class IngestionTrigger {
             const inwardZ = -dz / distHorizontal;
             entity.body.setLinearVelocity(
               new Vector3(
-                currentVel.x * 0.2 + inwardX * 2.0,
+                currentVel.x * 0.2 + inwardX * 1.5,
                 currentVel.y,
-                currentVel.z * 0.2 + inwardZ * 2.0
+                currentVel.z * 0.2 + inwardZ * 1.5
               )
             );
-          }
-
-          // Progressive visual vortex shrinkage as object drops deep into abyss
-          if (entityPos.y < -1.0) {
-            const depthRatio = Math.min(1.0, Math.abs(entityPos.y + 1.0) / (GAME_CONFIG.HOLE.DEPTH * 0.75));
-            const scale = Math.max(0.15, 1.0 - depthRatio * 0.8);
-            entity.mesh.scaling.set(scale, scale, scale);
           }
         } else {
           // --- Case 2: Entity is too large for current hole radius ---
@@ -196,6 +206,10 @@ export class IngestionTrigger {
     entity.shape.filterCollideMask = COLLISION_MASKS.GROUND | COLLISION_MASKS.PROP | COLLISION_MASKS.WALL;
     this.refreshBodyCollisions(entity.body);
     entity.body.setGravityFactor(1.0);
+
+    if (this.shadowGenerator) {
+      this.shadowGenerator.addShadowCaster(entity.mesh);
+    }
   }
 
   public dispose(): void {
