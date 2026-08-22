@@ -4,16 +4,19 @@ import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
-import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { Vector3, Quaternion } from '@babylonjs/core/Maths/math.vector';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
 import { Constants } from '@babylonjs/core/Engines/constants';
-import { GAME_CONFIG } from '../config/constants';
+import { PhysicsShapeContainer, PhysicsShapeBox } from '@babylonjs/core/Physics/v2/physicsShape';
+import { PhysicsBody } from '@babylonjs/core/Physics/v2/physicsBody';
+import { PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
+import { COLLISION_MASKS, GAME_CONFIG } from '../config/constants';
 
 /**
  * Entité Le Trou (The Hole / Sinkhole).
- * Gère le masque Stencil Buffer, l'Abîme intérieur avec texture de profondeur 3D,
- * la source de lumière interne illuminant les objets en chute, le fond et la bordure visuelle.
+ * Gère le masque Stencil Buffer, le cylindre ouvert 3D (sans couvercle supérieur),
+ * le fond de puits, la source lumineuse interne et le corps physique de tube (parois de collision).
  */
 export class Hole {
   private scene: Scene;
@@ -23,6 +26,9 @@ export class Hole {
   private abyssBottom: Mesh;
   private holeRim: Mesh;
   private innerLight: PointLight;
+  private tubeColliderMesh!: Mesh;
+  private tubeColliderBody: PhysicsBody | null = null;
+  private tubeShapeContainer: PhysicsShapeContainer | null = null;
   private abyssTexture: DynamicTexture | null = null;
   private bottomTexture: DynamicTexture | null = null;
   private currentRadius: number;
@@ -37,17 +43,17 @@ export class Hole {
     this.currentRadius = initialRadius;
     this.depth = depth;
 
-    // Root node to position and synchronize all hole components atomically
+    // Root node to position and synchronize all hole visual components atomically
     this.rootNode = new TransformNode('holeRoot', this.scene);
     this.rootNode.position = new Vector3(0, 0, 0);
 
-    // 1. Stencil Cutout Mask (Group 0 - Pure Stencil Write)
+    // 1. Stencil Cutout Mask (Group 0 - Pure Stencil Write, no color, no depth)
     this.stencilMask = this.createStencilMask();
 
-    // 2. Abyss Interior Cylinder (Group 1 - 3D Depth Pit with gradient & rings)
+    // 2. Abyss Interior Cylinder: 100% open at the top (NO_CAP) for seamless deep view
     this.abyssMesh = this.createAbyssMesh();
 
-    // 3. Abyss Bottom Cap (Group 1 - Vortex Void Illusion)
+    // 3. Abyss Bottom Cap (Group 1 - Vortex Void floor)
     this.abyssBottom = this.createAbyssBottom();
 
     // 4. Hole Rim Border (Group 1 - Stylized Beveled Outline)
@@ -55,6 +61,9 @@ export class Hole {
 
     // 5. Internal Point Light illuminating falling props inside the tunnel
     this.innerLight = this.createInnerLight();
+
+    // 6. Physical Havok Tube Wall Colliders so objects physically bounce inside the cylinder
+    this.setupPhysicsTubeCollider();
 
     // Apply initial radius scaling
     this.updateScaling();
@@ -111,16 +120,18 @@ export class Hole {
   }
 
   /**
-   * Crée le cylindre 3D de l'Abîme avec un dégradé vertical haute visibilité et des anneaux de repère 3D.
+   * Crée le cylindre 3D de l'Abîme SANS AUCUN COUVERCLE SUPÉRIEUR (cap: NO_CAP)
+   * avec un dégradé vertical haute visibilité et des anneaux de repère 3D.
    */
   private createAbyssMesh(): Mesh {
     const cylinder = MeshBuilder.CreateCylinder(
       'abyssInterior',
       {
         diameterTop: 2,
-        diameterBottom: 1.95,
+        diameterBottom: 2,
         height: this.depth,
         tessellation: GAME_CONFIG.HOLE.TESSELLATION,
+        cap: Mesh.NO_CAP, // ABSOLUMENT AUCUN COUVERCLE : TUBE 100% OUVERT AU SOMMET ET AU FOND
         sideOrientation: Mesh.DOUBLESIDE,
       },
       this.scene
@@ -131,7 +142,7 @@ export class Hole {
     cylinder.parent = this.rootNode;
     cylinder.isPickable = false;
 
-    // Generate dynamic vertical gradient texture with highly visible depth rings and structural panels
+    // Dynamic vertical gradient texture with highly visible depth rings and structural panels
     this.abyssTexture = new DynamicTexture(
       'abyssWallTexture',
       { width: 512, height: 512 },
@@ -140,7 +151,7 @@ export class Hole {
     );
     const ctx = this.abyssTexture.getContext();
 
-    // Vertical illumination gradient from illuminated top opening to deep abyss
+    // Vertical illumination gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, 512);
     gradient.addColorStop(0.0, '#5a667f'); // Haut de paroi claire et bien visible sous l'ouverture
     gradient.addColorStop(0.12, '#3e485c'); // Paroi supérieure
@@ -273,6 +284,71 @@ export class Hole {
   }
 
   /**
+   * Initialise le maillage et le corps physique de tube cylindrique Havok (12 colliders de parois).
+   */
+  private setupPhysicsTubeCollider(): void {
+    this.tubeColliderMesh = new Mesh('holeTubeColliderMesh', this.scene);
+    this.tubeColliderMesh.isVisible = false;
+    this.tubeColliderMesh.isPickable = false;
+
+    this.rebuildTubePhysicsShape();
+  }
+
+  /**
+   * Construit la forme physique en tube creux avec 12 parois segmentées autour du périmètre.
+   */
+  private rebuildTubePhysicsShape(): void {
+    if (this.tubeColliderBody) {
+      this.tubeColliderBody.dispose();
+      this.tubeColliderBody = null;
+    }
+    if (this.tubeShapeContainer) {
+      this.tubeShapeContainer.dispose();
+      this.tubeShapeContainer = null;
+    }
+
+    const container = new PhysicsShapeContainer(this.scene);
+    const numSegments = 12;
+    const r = this.currentRadius;
+    const depth = this.depth;
+    const segmentWidth = 2 * r * Math.tan(Math.PI / numSegments) * 1.08;
+    const segmentThickness = 0.5;
+
+    for (let i = 0; i < numSegments; i++) {
+      const theta = (i * 2 * Math.PI) / numSegments;
+      const x = Math.sin(theta) * (r + segmentThickness / 2);
+      const z = Math.cos(theta) * (r + segmentThickness / 2);
+      const rot = Quaternion.FromEulerAngles(0, theta, 0);
+
+      const box = new PhysicsShapeBox(
+        Vector3.Zero(),
+        Quaternion.Identity(),
+        new Vector3(segmentWidth, depth, segmentThickness),
+        this.scene
+      );
+      container.addChild(box, new Vector3(x, -depth / 2 - 0.1, z), rot, Vector3.One());
+    }
+
+    // Collision filter: WALL collides exclusively with SWALLOWED props falling inside the hole
+    container.filterMembershipMask = COLLISION_MASKS.WALL;
+    container.filterCollideMask = COLLISION_MASKS.SWALLOWED;
+
+    this.tubeShapeContainer = container;
+    this.tubeColliderBody = new PhysicsBody(
+      this.tubeColliderMesh,
+      PhysicsMotionType.ANIMATED,
+      false,
+      this.scene
+    );
+    this.tubeColliderBody.shape = container;
+    this.tubeColliderBody.setMassProperties({ mass: 0 });
+
+    const pos = this.rootNode.position;
+    this.tubeColliderMesh.position.set(pos.x, 0, pos.z);
+    this.tubeColliderBody.setTargetTransform(pos, Quaternion.Identity());
+  }
+
+  /**
    * Met à jour la mise à l'échelle de toutes les composantes du trou.
    */
   private updateScaling(): void {
@@ -285,6 +361,9 @@ export class Hole {
     // 3D cylinder & torus scaling (X, Z horizontal radii)
     this.abyssMesh.scaling.set(r, 1, r);
     this.holeRim.scaling.set(r, 1, r);
+
+    // Rebuild physics tube collider to match new radius
+    this.rebuildTubePhysicsShape();
   }
 
   /**
@@ -293,6 +372,11 @@ export class Hole {
   public setPosition(x: number, z: number): void {
     this.rootNode.position.x = x;
     this.rootNode.position.z = z;
+
+    if (this.tubeColliderMesh && this.tubeColliderBody) {
+      this.tubeColliderMesh.position.set(x, 0, z);
+      this.tubeColliderBody.setTargetTransform(new Vector3(x, 0, z), Quaternion.Identity());
+    }
   }
 
   /**
@@ -303,15 +387,17 @@ export class Hole {
   }
 
   /**
-   * Modifie le rayon du trou et met à jour l'ensemble des maillages.
+   * Modifie le rayon du trou et met à jour l'ensemble des maillages et colliders physiques.
    */
   public setRadius(radius: number): void {
     const clampedRadius = Math.max(
       GAME_CONFIG.HOLE.MIN_RADIUS,
       Math.min(radius, GAME_CONFIG.HOLE.MAX_RADIUS)
     );
-    this.currentRadius = clampedRadius;
-    this.updateScaling();
+    if (Math.abs(this.currentRadius - clampedRadius) > 0.05) {
+      this.currentRadius = clampedRadius;
+      this.updateScaling();
+    }
   }
 
   /**
@@ -360,6 +446,16 @@ export class Hole {
     this.bottomTexture = null;
 
     this.innerLight.dispose();
+
+    if (this.tubeColliderBody) {
+      this.tubeColliderBody.dispose();
+      this.tubeColliderBody = null;
+    }
+    if (this.tubeShapeContainer) {
+      this.tubeShapeContainer.dispose();
+      this.tubeShapeContainer = null;
+    }
+    this.tubeColliderMesh?.dispose();
 
     this.stencilMask.material?.dispose();
     this.stencilMask.dispose();
