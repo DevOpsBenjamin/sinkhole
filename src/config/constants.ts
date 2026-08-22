@@ -30,25 +30,25 @@ export const GAME_CONFIG = {
   },
   PROGRESSION: {
     LEVELS: [
-      { level: 1, name: 'Micro Trou', requiredScore: 0, targetRadius: 1.5 },
-      { level: 2, name: 'Moyen Trou', requiredScore: 120, targetRadius: 2.5 },
-      { level: 3, name: 'Grand Trou', requiredScore: 500, targetRadius: 4.2 },
-      { level: 4, name: 'Abîme Colossal', requiredScore: 1500, targetRadius: 6.0 },
+      { level: 1, name: 'Micro Trou', requiredScore: 0, targetRadius: 1.0 },
+      { level: 2, name: 'Moyen Trou', requiredScore: 100, targetRadius: 2.2 },
+      { level: 3, name: 'Grand Trou', requiredScore: 400, targetRadius: 4.5 },
+      { level: 4, name: 'Abîme Colossal', requiredScore: 1200, targetRadius: 8.0 },
+      { level: 5, name: 'Dévoreur Planétaire', requiredScore: 3000, targetRadius: 16.0 },
     ],
     GROWTH_LERP_SPEED: 4.0,
     CAMERA_ZOOM_LERP_SPEED: 3.5,
-    BASE_CAMERA_RADIUS: 25.0,
   },
   CAMERA: {
-    ALPHA: -Math.PI / 2,
-    BETA: Math.PI / 4, // 45 degrees top-down perspective
-    RADIUS: 25,
-    TARGET: Vector3.Zero(),
-    LOWER_BETA_LIMIT: 0.1,
-    UPPER_BETA_LIMIT: Math.PI / 2.2,
+    INITIAL_DISTANCE: 7.5, // Vue rasante intime au départ (illusion monde plat)
+    BASE_PITCH: 0.68, // ~39 deg au-dessus du plan tangent
+    MAX_PITCH: 1.15, // ~66 deg en vue spatiale
     MIN_Z: 0.1,
     MAX_Z: 1000,
-    FOLLOW_SMOOTHING: 6.0,
+    FOV: 0.85,
+    FOLLOW_SMOOTHING: 9.0,
+    CAMERA_SMOOTHING: 6.0,
+    ROTATION_SMOOTHING: 5.0,
   },
   LIGHTS: {
     HEMISPHERIC_INTENSITY: 0.6,
@@ -56,9 +56,9 @@ export const GAME_CONFIG = {
     DIRECTION: new Vector3(-1, -2, -1),
   },
   HOLE: {
-    INITIAL_RADIUS: 1.5,
-    MIN_RADIUS: 1.0,
-    MAX_RADIUS: 12.0,
+    INITIAL_RADIUS: 1.0,
+    MIN_RADIUS: 0.8,
+    MAX_RADIUS: 25.0,
     DEPTH: 18.0, // Deep abyss pit for extended 3D falling duration
     TESSELLATION: 64,
   },
