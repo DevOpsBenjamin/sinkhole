@@ -40,5 +40,14 @@ Le module d'entrée unifié prenant en charge de manière fluide le Clavier (WAS
 ### Interface & Boucle de Jeu (*HUD & Game Loop*)
 L'interface utilisateur native 2D Babylon GUI intégrant le menu de démarrage, le chronomètre arcade de 2 minutes, le score en direct, la jauge de progression, le bilan de fin de partie et le replay sans rechargement de page.
 
+### Planétoïde Sphérique (*Spherical Planetoid / Planet Arena*)
+L'environnement global de jeu matérialisé par une planète 3D sphérique continue (rayon $R = 35.0$ m, circonférence $\approx 220$ m) dotée d'un collider physique Havok sphérique statique, formant une surface continue sans bords ni murs artificiels.
+
+### Gravité Radiale (*Radial Centripetal Gravity Field*)
+Le champ de forces gravitationnelles centripètes dirigé en tout point de l'espace vers le centre du planétoïde $(0,0,0)$ avec une intensité $g = 9.81\text{ m/s}^2$, assurant l'adhérence, la friction et le roulement réaliste de tous les corps rigides dynamiques sur la courbure du globe.
+
+### Alignement Tangentiel (*Tangential Surface Alignment*)
+L'orientation angulaire 3D assignée aux entités physiques et aux éléments de surface, alignant leur axe vertical local avec le vecteur normal radial sortant $\mathbf{n} = \frac{\mathbf{P}}{\|\mathbf{P}\|}$, complétée par une rotation d'azimut libre pour un peuplement organique du globe.
+
 ### Arène de Jeu (*Urban Arena*)
-L'environnement statique de $100\times 100$ m (sol, limites de carte, bordures physiques invisibles) sur lequel évoluent le trou et les entités physiques.
+Le monde planétaire complet sur lequel évoluent le trou et les entités physiques de tous tiers.

@@ -1,11 +1,6 @@
 import { Scene } from '@babylonjs/core/scene';
-import { Vector3, Quaternion } from '@babylonjs/core/Maths/math.vector';
-import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
-import { Mesh } from '@babylonjs/core/Meshes/mesh';
-import { PhysicsBody } from '@babylonjs/core/Physics/v2/physicsBody';
-import { PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
-import { PhysicsShapeBox } from '@babylonjs/core/Physics/v2/physicsShape';
-import { COLLISION_MASKS, GAME_CONFIG } from '../config/constants';
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { GAME_CONFIG } from '../config/constants';
 import { PropFactory } from '../factories/propFactory';
 import { PropType, SwallowableEntity } from '../entities/swallowableEntity';
 
@@ -29,54 +24,22 @@ const DEFAULT_SPAWNER_CONFIG: SpawnerConfig = {
  * Gestionnaire de génération procédurale et de confinement spatial de l'Arène.
  */
 export class ArenaSpawner {
-  private scene: Scene;
+  public readonly scene: Scene;
   private config: SpawnerConfig;
   private entities: SwallowableEntity[] = [];
-  private boundaryMeshes: Mesh[] = [];
 
   constructor(scene: Scene, config: Partial<SpawnerConfig> = {}) {
     this.scene = scene;
     this.config = { ...DEFAULT_SPAWNER_CONFIG, ...config };
-    this.createBoundaryWalls();
   }
 
   /**
-   * Crée 4 murs physiques invisibles autour du périmètre de l'arène pour contenir les entités.
-   */
-  private createBoundaryWalls(): void {
-    const halfSize = GAME_CONFIG.ARENA.SIZE / 2;
-    const wallHeight = 6.0;
-    const wallThickness = 1.0;
-
-    const wallsData = [
-      { name: 'northWall', pos: new Vector3(0, wallHeight / 2, halfSize), size: new Vector3(GAME_CONFIG.ARENA.SIZE, wallHeight, wallThickness) },
-      { name: 'southWall', pos: new Vector3(0, wallHeight / 2, -halfSize), size: new Vector3(GAME_CONFIG.ARENA.SIZE, wallHeight, wallThickness) },
-      { name: 'eastWall', pos: new Vector3(halfSize, wallHeight / 2, 0), size: new Vector3(wallThickness, wallHeight, GAME_CONFIG.ARENA.SIZE) },
-      { name: 'westWall', pos: new Vector3(-halfSize, wallHeight / 2, 0), size: new Vector3(wallThickness, wallHeight, GAME_CONFIG.ARENA.SIZE) },
-    ];
-
-    for (const w of wallsData) {
-      const wallMesh = MeshBuilder.CreateBox(w.name, { width: w.size.x, height: w.size.y, depth: w.size.z }, this.scene);
-      wallMesh.position = w.pos;
-      wallMesh.isVisible = false; // Invisible physics barrier
-
-      const wallShape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), w.size, this.scene);
-      wallShape.filterMembershipMask = COLLISION_MASKS.WALL;
-      wallShape.filterCollideMask = COLLISION_MASKS.PROP | COLLISION_MASKS.SWALLOWED;
-
-      const wallBody = new PhysicsBody(wallMesh, PhysicsMotionType.STATIC, false, this.scene);
-      wallBody.shape = wallShape;
-      wallBody.setMassProperties({ mass: 0 });
-
-      this.boundaryMeshes.push(wallMesh);
-    }
-  }
-
-  /**
-   * Génère les entités de l'arène avec une distribution spatiale équilibrée par Tiers.
+   * Génère les entités de l'arène avec une distribution sphérique équilibrée par Tiers sur le globe.
    */
   public spawnArena(factory: PropFactory): void {
     this.clearEntities();
+
+    const planetRadius = GAME_CONFIG.PLANET.RADIUS;
 
     const tier1Types = [
       PropType.TRAFFIC_CONE,
@@ -112,51 +75,69 @@ export class ArenaSpawner {
       spawnQueue.push({ type: tier3Types[i % tier3Types.length], minDistance: 6.0 });
     }
 
-    // Shuffle spawn queue for natural dispersion
+    // Mélange de la file de spawn pour une répartition homogène
     spawnQueue.sort(() => Math.random() - 0.5);
 
-    const halfArena = (GAME_CONFIG.ARENA.SIZE / 2) - 4.0; // Keep away from boundary walls
-    const spawnedPositions: Vector3[] = [];
+    const spawnedDirections: Vector3[] = [];
 
     for (const item of spawnQueue) {
-      let candidatePos: Vector3 | null = null;
+      let candidateDir: Vector3 | null = null;
       let attempts = 0;
 
-      while (attempts < 30) {
+      while (attempts < 50) {
         attempts++;
-        const rx = (Math.random() * 2 - 1) * halfArena;
-        const rz = (Math.random() * 2 - 1) * halfArena;
+        // Échantillonnage uniforme sur la sphère unité
+        // u = cos(phi) in [-1, 1], theta in [0, 2*PI]
+        const u = Math.random() * 2 - 1;
+        const theta = Math.random() * Math.PI * 2;
+        const rCircle = Math.sqrt(Math.max(0, 1 - u * u));
+        const nx = rCircle * Math.cos(theta);
+        const ny = u;
+        const nz = rCircle * Math.sin(theta);
 
-        // Skip central hole spawn area
-        if (Math.hypot(rx, rz) < this.config.centerExclusionRadius) {
+        const dir = new Vector3(nx, ny, nz);
+
+        // Distance angulaire par rapport au Pôle Nord (spawn initial du Trou à (0, 1, 0))
+        const dotPole = Math.max(-1, Math.min(1, dir.y));
+        const angularDistToPole = Math.acos(dotPole);
+        const arcToPole = angularDistToPole * planetRadius;
+
+        if (arcToPole < this.config.centerExclusionRadius) {
           continue;
         }
 
-        // Check distance against already spawned positions
-        const tooClose = spawnedPositions.some(
-          (pos) => Math.hypot(pos.x - rx, pos.z - rz) < item.minDistance
-        );
+        // Vérification de la distance minimale d'arc par rapport aux objets déjà placés
+        const tooClose = spawnedDirections.some((otherDir) => {
+          const dot = Math.max(-1, Math.min(1, Vector3.Dot(dir, otherDir)));
+          const arcDist = Math.acos(dot) * planetRadius;
+          return arcDist < item.minDistance;
+        });
 
         if (!tooClose) {
-          candidatePos = new Vector3(rx, 0, rz);
+          candidateDir = dir;
           break;
         }
       }
 
-      if (!candidatePos) {
-        // Fallback position if all random attempts failed
-        const angle = Math.random() * Math.PI * 2;
-        const dist = this.config.centerExclusionRadius + Math.random() * (halfArena - this.config.centerExclusionRadius);
-        candidatePos = new Vector3(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+      if (!candidateDir) {
+        // Position de secours si l'échantillonnage aléatoire s'est heurté à des collisions
+        const theta = Math.random() * Math.PI * 2;
+        const u = -0.6 + Math.random() * 1.2; // Évite les pôles extrêmes
+        const rCircle = Math.sqrt(Math.max(0, 1 - u * u));
+        candidateDir = new Vector3(rCircle * Math.cos(theta), u, rCircle * Math.sin(theta));
       }
 
-      spawnedPositions.push(candidatePos);
-      const rotationY = Math.random() * Math.PI * 2;
-      const entity = factory.createProp(item.type, candidatePos, rotationY);
+      spawnedDirections.push(candidateDir);
+
+      const surfacePos = candidateDir.scale(planetRadius);
+      const normal = candidateDir.clone();
+      const azimuthAngle = Math.random() * Math.PI * 2;
+
+      const entity = factory.createPropOnSphere(item.type, surfacePos, normal, azimuthAngle);
       this.entities.push(entity);
     }
 
-    console.log(`[ArenaSpawner] Spawned ${this.entities.length} interactive entities across arena.`);
+    console.log(`[ArenaSpawner] Spawned ${this.entities.length} interactive entities spherically across planetoid.`);
   }
 
   public getEntities(): SwallowableEntity[] {
@@ -180,9 +161,5 @@ export class ArenaSpawner {
 
   public dispose(): void {
     this.clearEntities();
-    for (const wall of this.boundaryMeshes) {
-      wall.dispose();
-    }
-    this.boundaryMeshes = [];
   }
 }

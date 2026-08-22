@@ -73,7 +73,8 @@ export class IngestionTrigger {
     const holePos = this.hole.getPosition();
     const holeRadius = this.hole.getRadius();
     const triggerRadius = holeRadius * GAME_CONFIG.INGESTION.TRIGGER_RADIUS_MARGIN;
-    const abyssBottomThreshold = -GAME_CONFIG.HOLE.DEPTH * 0.85;
+    const planetR = GAME_CONFIG.PLANET.RADIUS;
+    const abyssBottomThreshold = planetR - GAME_CONFIG.HOLE.DEPTH * 0.85;
 
     const entities = this.getEntities();
 
@@ -84,19 +85,21 @@ export class IngestionTrigger {
       }
 
       const entityPos = entity.getPosition();
-      const dx = entityPos.x - holePos.x;
-      const dz = entityPos.z - holePos.z;
-      const distHorizontal = Math.sqrt(dx * dx + dz * dz);
+      const distFromCenter = Math.sqrt(entityPos.x * entityPos.x + entityPos.y * entityPos.y + entityPos.z * entityPos.z);
 
       // Check depth ingestion threshold (reached bottom of abyss -> disappear from cylinder)
-      if (entityPos.y <= abyssBottomThreshold) {
+      if (distFromCenter <= abyssBottomThreshold) {
         entity.isSwallowed = true;
         this.onEntitySwallowedObservable.notifyObservers(entity);
         continue;
       }
 
+      const dx = entityPos.x - holePos.x;
+      const dz = entityPos.z - holePos.z;
+      const distHorizontal = Math.sqrt(dx * dx + dz * dz);
+
       // Check if entity is within the hole volume
-      const isInsideHoleColumn = distHorizontal <= triggerRadius && entityPos.y >= -GAME_CONFIG.HOLE.DEPTH;
+      const isInsideHoleColumn = distHorizontal <= triggerRadius && distFromCenter <= planetR + 2.0;
 
       if (isInsideHoleColumn) {
         const canSwallow = entity.canBeSwallowedBy(holeRadius);

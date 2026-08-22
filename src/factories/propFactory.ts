@@ -47,9 +47,22 @@ export class PropFactory {
     return mat;
   }
 
-  private setupEntity(id: string, mesh: Mesh, shape: PhysicsShape, def: PropDefinition): SwallowableEntity {
+  private setupEntity(
+    id: string,
+    mesh: Mesh,
+    shape: PhysicsShape,
+    def: PropDefinition,
+    worldPos: Vector3,
+    orientation: Quaternion
+  ): SwallowableEntity {
     mesh.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
     this.shadowGenerator.addShadowCaster(mesh);
+
+    mesh.position = worldPos.clone();
+    mesh.rotationQuaternion = orientation.clone();
+
+    // Friction et restitution pour bonne tenue sur la courbure du globe
+    shape.material = { friction: 0.7, restitution: 0.1 };
 
     // Configure collision filter masks for Havok
     shape.filterMembershipMask = COLLISION_MASKS.PROP;
@@ -62,40 +75,68 @@ export class PropFactory {
     return new SwallowableEntity(id, mesh, body, shape, def);
   }
 
-  public createProp(type: PropType, position: Vector3, rotationY = 0): SwallowableEntity {
+  /**
+   * Crée une entité positionnée et orientée tangentiellement sur la surface sphérique de la planète.
+   */
+  public createPropOnSphere(
+    type: PropType,
+    surfacePos: Vector3,
+    normal: Vector3,
+    azimuthAngle = 0
+  ): SwallowableEntity {
     const id = `prop_${type}_${++this.idCounter}`;
 
+    // Base rotation alignant +Y local (Vector3.Up()) avec la normale de surface
+    const baseQuat = new Quaternion();
+    Quaternion.FromUnitVectorsToRef(Vector3.Up(), normal, baseQuat);
+    const azimuthQuat = Quaternion.RotationAxis(normal, azimuthAngle);
+    const orientation = azimuthQuat.multiply(baseQuat);
+
+    const data = this.buildPropData(type, id);
+    const worldPos = surfacePos.add(normal.scale(data.heightOffset));
+
+    return this.setupEntity(id, data.mesh, data.shape, data.def, worldPos, orientation);
+  }
+
+  /**
+   * Crée une entité avec coordonnées planes (rétro-compatibilité).
+   */
+  public createProp(type: PropType, position: Vector3, rotationY = 0): SwallowableEntity {
+    return this.createPropOnSphere(type, position, Vector3.Up(), rotationY);
+  }
+
+  private buildPropData(type: PropType, id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
     switch (type) {
       // --- TIER 1 (MICRO) ---
       case PropType.TRAFFIC_CONE:
-        return this.createTrafficCone(id, position, rotationY);
+        return this.buildTrafficCone(id);
       case PropType.TRASH_BIN:
-        return this.createTrashBin(id, position, rotationY);
+        return this.buildTrashBin(id);
       case PropType.WOODEN_CRATE:
-        return this.createWoodenCrate(id, position, rotationY);
+        return this.buildWoodenCrate(id);
       case PropType.SMALL_BUSH:
-        return this.createSmallBush(id, position, rotationY);
+        return this.buildSmallBush(id);
 
       // --- TIER 2 (MOYEN) ---
       case PropType.PARK_BENCH:
-        return this.createParkBench(id, position, rotationY);
+        return this.buildParkBench(id);
       case PropType.STREET_LAMP:
-        return this.createStreetLamp(id, position, rotationY);
+        return this.buildStreetLamp(id);
       case PropType.SEDAN_CAR:
-        return this.createSedanCar(id, position, rotationY);
+        return this.buildSedanCar(id);
       case PropType.LARGE_TREE:
-        return this.createLargeTree(id, position, rotationY);
+        return this.buildLargeTree(id);
 
       // --- TIER 3 (GRAND) ---
       case PropType.DELIVERY_TRUCK:
-        return this.createDeliveryTruck(id, position, rotationY);
+        return this.buildDeliveryTruck(id);
       case PropType.BUS_STOP:
-        return this.createBusStop(id, position, rotationY);
+        return this.buildBusStop(id);
       case PropType.HOUSE_PAVILION:
-        return this.createHousePavilion(id, position, rotationY);
+        return this.buildHousePavilion(id);
 
       default:
-        return this.createWoodenCrate(id, position, rotationY);
+        return this.buildWoodenCrate(id);
     }
   }
 
@@ -103,7 +144,7 @@ export class PropFactory {
   // TIER 1 BUILDERS
   // -------------------------------------------------------------
 
-  private createTrafficCone(id: string, position: Vector3, rotationY: number): SwallowableEntity {
+  private buildTrafficCone(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
     const def: PropDefinition = {
       type: PropType.TRAFFIC_CONE,
       tier: PropTier.TIER_1,
@@ -124,9 +165,6 @@ export class PropFactory {
 
     const merged = Mesh.MergeMeshes([cone, base], true, true, undefined, false, true)!;
     merged.name = id;
-    merged.position = position.clone();
-    merged.position.y += 0.45;
-    merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('coneMat', new Color3(1.0, 0.42, 0.05), new Color3(0.3, 0.3, 0.3));
 
     const shape = new PhysicsShapeCylinder(
@@ -136,10 +174,10 @@ export class PropFactory {
       this.scene
     );
 
-    return this.setupEntity(id, merged, shape, def);
+    return { mesh: merged, shape, def, heightOffset: 0.45 };
   }
 
-  private createTrashBin(id: string, position: Vector3, rotationY: number): SwallowableEntity {
+  private buildTrashBin(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
     const def: PropDefinition = {
       type: PropType.TRASH_BIN,
       tier: PropTier.TIER_1,
@@ -155,9 +193,6 @@ export class PropFactory {
       { diameter: 0.6, height: 0.9, tessellation: 18 },
       this.scene
     );
-    mesh.position = position.clone();
-    mesh.position.y += 0.5;
-    mesh.rotation.y = rotationY;
     mesh.material = this.getOrCreateMaterial('trashMat', new Color3(0.12, 0.48, 0.28));
 
     const shape = new PhysicsShapeCylinder(
@@ -167,10 +202,10 @@ export class PropFactory {
       this.scene
     );
 
-    return this.setupEntity(id, mesh, shape, def);
+    return { mesh, shape, def, heightOffset: 0.5 };
   }
 
-  private createWoodenCrate(id: string, position: Vector3, rotationY: number): SwallowableEntity {
+  private buildWoodenCrate(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
     const def: PropDefinition = {
       type: PropType.WOODEN_CRATE,
       tier: PropTier.TIER_1,
@@ -182,16 +217,13 @@ export class PropFactory {
     };
 
     const mesh = MeshBuilder.CreateBox(id, { size: 0.8 }, this.scene);
-    mesh.position = position.clone();
-    mesh.position.y += 0.45;
-    mesh.rotation.y = rotationY;
     mesh.material = this.getOrCreateMaterial('crateMat', new Color3(0.65, 0.45, 0.25));
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(0.8, 0.8, 0.8), this.scene);
-    return this.setupEntity(id, mesh, shape, def);
+    return { mesh, shape, def, heightOffset: 0.45 };
   }
 
-  private createSmallBush(id: string, position: Vector3, rotationY: number): SwallowableEntity {
+  private buildSmallBush(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
     const def: PropDefinition = {
       type: PropType.SMALL_BUSH,
       tier: PropTier.TIER_1,
@@ -204,20 +236,17 @@ export class PropFactory {
 
     const mesh = MeshBuilder.CreateSphere(id, { diameter: 1.0, segments: 8 }, this.scene);
     mesh.scaling.set(1.0, 0.85, 1.0);
-    mesh.position = position.clone();
-    mesh.position.y += 0.5;
-    mesh.rotation.y = rotationY;
     mesh.material = this.getOrCreateMaterial('bushMat', new Color3(0.2, 0.65, 0.18));
 
     const shape = new PhysicsShapeSphere(Vector3.Zero(), 0.5, this.scene);
-    return this.setupEntity(id, mesh, shape, def);
+    return { mesh, shape, def, heightOffset: 0.5 };
   }
 
   // -------------------------------------------------------------
   // TIER 2 BUILDERS
   // -------------------------------------------------------------
 
-  private createParkBench(id: string, position: Vector3, rotationY: number): SwallowableEntity {
+  private buildParkBench(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
     const def: PropDefinition = {
       type: PropType.PARK_BENCH,
       tier: PropTier.TIER_2,
@@ -234,16 +263,13 @@ export class PropFactory {
 
     const merged = Mesh.MergeMeshes([seat, back], true, true, undefined, false, true)!;
     merged.name = id;
-    merged.position = position.clone();
-    merged.position.y += 0.4;
-    merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('benchMat', new Color3(0.55, 0.32, 0.18));
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(1.8, 0.7, 0.7), this.scene);
-    return this.setupEntity(id, merged, shape, def);
+    return { mesh: merged, shape, def, heightOffset: 0.4 };
   }
 
-  private createStreetLamp(id: string, position: Vector3, rotationY: number): SwallowableEntity {
+  private buildStreetLamp(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
     const def: PropDefinition = {
       type: PropType.STREET_LAMP,
       tier: PropTier.TIER_2,
@@ -260,9 +286,6 @@ export class PropFactory {
 
     const merged = Mesh.MergeMeshes([pole, top], true, true, undefined, false, true)!;
     merged.name = id;
-    merged.position = position.clone();
-    merged.position.y += 1.65;
-    merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('lampMat', new Color3(0.18, 0.2, 0.25), new Color3(0.4, 0.4, 0.4));
 
     const shape = new PhysicsShapeCylinder(
@@ -272,10 +295,10 @@ export class PropFactory {
       this.scene
     );
 
-    return this.setupEntity(id, merged, shape, def);
+    return { mesh: merged, shape, def, heightOffset: 1.65 };
   }
 
-  private createSedanCar(id: string, position: Vector3, rotationY: number): SwallowableEntity {
+  private buildSedanCar(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
     const def: PropDefinition = {
       type: PropType.SEDAN_CAR,
       tier: PropTier.TIER_2,
@@ -292,24 +315,20 @@ export class PropFactory {
 
     const merged = Mesh.MergeMeshes([bodyMesh, cabinMesh], true, true, undefined, false, true)!;
     merged.name = id;
-    merged.position = position.clone();
-    merged.position.y += 0.65;
-    merged.rotation.y = rotationY;
 
-    // Pick a distinct car color
     const carColors = [
-      new Color3(0.85, 0.15, 0.15), // Red
-      new Color3(0.15, 0.45, 0.85), // Blue
-      new Color3(0.95, 0.75, 0.1),  // Yellow
+      new Color3(0.85, 0.15, 0.15), // Rouge
+      new Color3(0.15, 0.45, 0.85), // Bleu
+      new Color3(0.95, 0.75, 0.1),  // Jaune
     ];
     const color = carColors[this.idCounter % carColors.length];
     merged.material = this.getOrCreateMaterial(`carMat_${this.idCounter % carColors.length}`, color, new Color3(0.4, 0.4, 0.4));
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(2.6, 1.2, 1.4), this.scene);
-    return this.setupEntity(id, merged, shape, def);
+    return { mesh: merged, shape, def, heightOffset: 0.65 };
   }
 
-  private createLargeTree(id: string, position: Vector3, rotationY: number): SwallowableEntity {
+  private buildLargeTree(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
     const def: PropDefinition = {
       type: PropType.LARGE_TREE,
       tier: PropTier.TIER_2,
@@ -328,9 +347,6 @@ export class PropFactory {
 
     const merged = Mesh.MergeMeshes([trunk, foliage], true, true, undefined, false, true)!;
     merged.name = id;
-    merged.position = position.clone();
-    merged.position.y += 1.85;
-    merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('treeMat', new Color3(0.14, 0.52, 0.22));
 
     const shape = new PhysicsShapeCylinder(
@@ -340,14 +356,14 @@ export class PropFactory {
       this.scene
     );
 
-    return this.setupEntity(id, merged, shape, def);
+    return { mesh: merged, shape, def, heightOffset: 1.85 };
   }
 
   // -------------------------------------------------------------
   // TIER 3 BUILDERS
   // -------------------------------------------------------------
 
-  private createDeliveryTruck(id: string, position: Vector3, rotationY: number): SwallowableEntity {
+  private buildDeliveryTruck(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
     const def: PropDefinition = {
       type: PropType.DELIVERY_TRUCK,
       tier: PropTier.TIER_3,
@@ -366,16 +382,13 @@ export class PropFactory {
 
     const merged = Mesh.MergeMeshes([cabin, cargo], true, true, undefined, false, true)!;
     merged.name = id;
-    merged.position = position.clone();
-    merged.position.y += 1.05;
-    merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('truckMat', new Color3(0.88, 0.9, 0.95), new Color3(0.3, 0.3, 0.3));
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(4.2, 2.0, 1.8), this.scene);
-    return this.setupEntity(id, merged, shape, def);
+    return { mesh: merged, shape, def, heightOffset: 1.05 };
   }
 
-  private createBusStop(id: string, position: Vector3, rotationY: number): SwallowableEntity {
+  private buildBusStop(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
     const def: PropDefinition = {
       type: PropType.BUS_STOP,
       tier: PropTier.TIER_3,
@@ -394,16 +407,13 @@ export class PropFactory {
 
     const merged = Mesh.MergeMeshes([roof, backWall], true, true, undefined, false, true)!;
     merged.name = id;
-    merged.position = position.clone();
-    merged.position.y += 1.15;
-    merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('busStopMat', new Color3(0.2, 0.58, 0.68));
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(3.0, 2.2, 1.6), this.scene);
-    return this.setupEntity(id, merged, shape, def);
+    return { mesh: merged, shape, def, heightOffset: 1.15 };
   }
 
-  private createHousePavilion(id: string, position: Vector3, rotationY: number): SwallowableEntity {
+  private buildHousePavilion(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
     const def: PropDefinition = {
       type: PropType.HOUSE_PAVILION,
       tier: PropTier.TIER_3,
@@ -424,12 +434,9 @@ export class PropFactory {
 
     const merged = Mesh.MergeMeshes([base, roof], true, true, undefined, false, true)!;
     merged.name = id;
-    merged.position = position.clone();
-    merged.position.y += 1.85;
-    merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('houseMat', new Color3(0.78, 0.68, 0.58));
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(4.5, 3.6, 4.0), this.scene);
-    return this.setupEntity(id, merged, shape, def);
+    return { mesh: merged, shape, def, heightOffset: 1.85 };
   }
 }
