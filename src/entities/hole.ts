@@ -1,6 +1,7 @@
 import { Scene } from '@babylonjs/core/scene';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
+import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
@@ -84,27 +85,14 @@ export class Hole {
   }
 
   /**
-   * Crée le masque planaire qui écrit dans le Stencil Buffer sans écrire en couleur ni en profondeur.
+   * Crée la calotte sphérique qui écrit dans le Stencil Buffer en épousant la courbure de la planète.
    */
   private createStencilMask(): Mesh {
-    const mask = MeshBuilder.CreateDisc(
-      'stencilCutoutMask',
-      {
-        radius: 1, // Base unit radius, scaled via Transform
-        tessellation: GAME_CONFIG.HOLE.TESSELLATION,
-        sideOrientation: Mesh.DOUBLESIDE,
-      },
-      this.scene
-    );
-
-    // Rotate flat onto horizontal XZ plane
-    mask.rotation.x = Math.PI / 2;
-    mask.position.y = 0.002; // Positioned slightly above ground level
+    const mask = new Mesh('stencilCutoutMask', this.scene);
     mask.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_MASK;
     mask.parent = this.rootNode;
     mask.isPickable = false;
 
-    // Stencil Material
     const maskMat = new StandardMaterial('stencilMaskMat', this.scene);
     maskMat.disableColorWrite = true;
     maskMat.disableDepthWrite = true;
@@ -114,21 +102,95 @@ export class Hole {
     maskMat.stencil.funcMask = 0xff;
     maskMat.stencil.opStencilDepthPass = Constants.REPLACE;
     maskMat.stencil.mask = 0xff;
+    maskMat.backFaceCulling = false;
 
     mask.material = maskMat;
+    this.updateStencilMaskGeometry(mask, this.currentRadius);
     return mask;
   }
 
   /**
-   * Crée le cylindre 3D de l'Abîme SANS AUCUN COUVERCLE SUPÉRIEUR (cap: NO_CAP)
-   * avec un dégradé vertical haute visibilité et des anneaux de repère 3D.
+   * Met à jour la géométrie de la calotte sphérique Stencil concentrique avec la planète (R=35m).
+   */
+  private updateStencilMaskGeometry(mesh: Mesh, radius: number): void {
+    const planetR = GAME_CONFIG.PLANET.RADIUS;
+    const rings = 8;
+    const segments = GAME_CONFIG.HOLE.TESSELLATION;
+    const epsilon = 0.03;
+
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+    const normals: number[] = [];
+
+    // Center apex vertex
+    positions.push(0, epsilon, 0);
+    normals.push(0, 1, 0);
+    uvs.push(0.5, 0.5);
+
+    // Concentric rings matching spherical planet elevation
+    for (let ring = 1; ring <= rings; ring++) {
+      const frac = ring / rings;
+      const rho = radius * frac;
+      const y = Math.sqrt(Math.max(0, planetR * planetR - rho * rho)) - planetR + epsilon;
+
+      for (let seg = 0; seg < segments; seg++) {
+        const angle = (seg * 2 * Math.PI) / segments;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const x = rho * cos;
+        const z = rho * sin;
+
+        positions.push(x, y, z);
+        const normY = (y + planetR) / planetR;
+        normals.push(x / planetR, normY, z / planetR);
+        uvs.push(0.5 + 0.5 * frac * cos, 0.5 + 0.5 * frac * sin);
+      }
+    }
+
+    // Center fan
+    for (let seg = 0; seg < segments; seg++) {
+      const nextSeg = (seg + 1) % segments;
+      indices.push(0, 1 + seg, 1 + nextSeg);
+    }
+
+    // Concentric quads
+    for (let ring = 1; ring < rings; ring++) {
+      const ringStart = 1 + (ring - 1) * segments;
+      const nextRingStart = 1 + ring * segments;
+
+      for (let seg = 0; seg < segments; seg++) {
+        const nextSeg = (seg + 1) % segments;
+        const p1 = ringStart + seg;
+        const p2 = ringStart + nextSeg;
+        const p3 = nextRingStart + seg;
+        const p4 = nextRingStart + nextSeg;
+        indices.push(p1, p3, p2);
+        indices.push(p2, p3, p4);
+      }
+    }
+
+    const vd = new VertexData();
+    vd.positions = positions;
+    vd.indices = indices;
+    vd.normals = normals;
+    vd.uvs = uvs;
+    vd.applyToMesh(mesh, true);
+  }
+
+  /**
+   * Crée l'Abîme conique 3D SANS AUCUN COUVERCLE SUPÉRIEUR (cap: NO_CAP)
+   * convergeant radialement vers le centre de la planète (0,0,0).
    */
   private createAbyssMesh(): Mesh {
+    const planetR = GAME_CONFIG.PLANET.RADIUS;
+    const bottomRatio = Math.max(0.1, (planetR - this.depth) / planetR);
+
     const cylinder = MeshBuilder.CreateCylinder(
       'abyssInterior',
       {
         diameterTop: 2,
-        diameterBottom: 2,
+        diameterBottom: 2 * bottomRatio,
         height: this.depth,
         tessellation: GAME_CONFIG.HOLE.TESSELLATION,
         cap: Mesh.NO_CAP, // ABSOLUMENT AUCUN COUVERCLE : TUBE 100% OUVERT AU SOMMET ET AU FOND
@@ -254,7 +316,7 @@ export class Hole {
   }
 
   /**
-   * Crée un anneau de bordure biseauté au ras du sol avec relief métallique/asphalte.
+   * Crée un anneau de bordure biseauté au ras de la surface sphérique.
    */
   private createHoleRim(): Mesh {
     const rim = MeshBuilder.CreateTorus(
@@ -295,7 +357,7 @@ export class Hole {
   }
 
   /**
-   * Construit la forme physique en tube creux avec 12 parois segmentées autour du périmètre.
+   * Construit la forme physique en tube creux conique avec 12 parois segmentées autour du périmètre.
    */
   private rebuildTubePhysicsShape(): void {
     if (this.tubeColliderBody) {
@@ -311,14 +373,23 @@ export class Hole {
     const numSegments = 12;
     const r = this.currentRadius;
     const depth = this.depth;
-    const segmentWidth = 2 * r * Math.tan(Math.PI / numSegments) * 1.08;
+    const planetR = GAME_CONFIG.PLANET.RADIUS;
+    const rimY = Math.sqrt(Math.max(0, planetR * planetR - r * r)) - planetR;
+    const bottomRatio = Math.max(0.1, (planetR - depth) / planetR);
+    const rBottom = r * bottomRatio;
+    const rMid = (r + rBottom) / 2;
+    const segmentWidth = 2 * rMid * Math.tan(Math.PI / numSegments) * 1.08;
     const segmentThickness = 0.5;
+    const taperAngle = Math.atan2(r - rBottom, depth);
 
     for (let i = 0; i < numSegments; i++) {
       const theta = (i * 2 * Math.PI) / numSegments;
-      const x = Math.sin(theta) * (r + segmentThickness / 2);
-      const z = Math.cos(theta) * (r + segmentThickness / 2);
-      const rot = Quaternion.FromEulerAngles(0, theta, 0);
+      const x = Math.sin(theta) * (rMid + segmentThickness / 2);
+      const z = Math.cos(theta) * (rMid + segmentThickness / 2);
+
+      const rotAzimuth = Quaternion.RotationAxis(Vector3.Up(), theta);
+      const rotTilt = Quaternion.RotationAxis(Vector3.Right(), taperAngle);
+      const rot = rotAzimuth.multiply(rotTilt);
 
       const box = new PhysicsShapeBox(
         Vector3.Zero(),
@@ -326,7 +397,7 @@ export class Hole {
         new Vector3(segmentWidth, depth, segmentThickness),
         this.scene
       );
-      container.addChild(box, new Vector3(x, -depth / 2 - 0.1, z), rot, Vector3.One());
+      container.addChild(box, new Vector3(x, rimY - depth / 2, z), rot, Vector3.One());
     }
 
     // Collision filter: WALL collides exclusively with SWALLOWED props falling inside the hole
@@ -355,16 +426,30 @@ export class Hole {
    */
   private updateScaling(): void {
     const r = this.currentRadius;
+    const planetR = GAME_CONFIG.PLANET.RADIUS;
+    const rimY = Math.sqrt(Math.max(0, planetR * planetR - r * r)) - planetR;
+    const bottomRatio = Math.max(0.1, (planetR - this.depth) / planetR);
 
-    // Disc scaling (rotation X = PI/2 -> X and Y scale local plane)
-    this.stencilMask.scaling.set(r, r, 1);
-    this.abyssBottom.scaling.set(r * 0.96, r * 0.96, 1);
+    // 1. Mise à jour de la calotte sphérique Stencil concentrique
+    this.updateStencilMaskGeometry(this.stencilMask, r);
 
-    // 3D cylinder & torus scaling (X, Z horizontal radii)
+    // 2. Position et mise à l'échelle de l'Abîme conique
+    this.abyssMesh.position.y = rimY - this.depth / 2;
     this.abyssMesh.scaling.set(r, 1, r);
+
+    // 3. Fond de l'Abîme au vortex
+    this.abyssBottom.position.y = rimY - this.depth + 0.05;
+    const bottomScale = r * bottomRatio * 0.98;
+    this.abyssBottom.scaling.set(bottomScale, bottomScale, 1);
+
+    // 4. Bordure de surface circulaire
+    this.holeRim.position.y = rimY + 0.018;
     this.holeRim.scaling.set(r, 1, r);
 
-    // Rebuild physics tube collider to match new radius
+    // 5. Source lumineuse interne
+    this.innerLight.position.y = rimY - 3.0;
+
+    // 6. Reconstruct physics conical tube collider to match new radius
     this.rebuildTubePhysicsShape();
   }
 
