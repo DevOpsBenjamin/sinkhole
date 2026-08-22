@@ -13,6 +13,7 @@ export class IngestionTrigger {
   private scene: Scene;
   private hole: Hole;
   private getEntities: () => SwallowableEntity[];
+  private isEnabled = true;
 
   public readonly onEntityFallingObservable = new Observable<SwallowableEntity>();
   public readonly onEntitySwallowedObservable = new Observable<SwallowableEntity>();
@@ -29,9 +30,14 @@ export class IngestionTrigger {
 
   private registerSimulationLoop(): void {
     this.renderObserver = this.scene.onBeforeRenderObservable.add(() => {
+      if (!this.isEnabled) return;
       const dt = this.scene.getEngine().getDeltaTime() / 1000.0;
       this.update(dt);
     });
+  }
+
+  public setEnabled(enabled: boolean): void {
+    this.isEnabled = enabled;
   }
 
   /**
