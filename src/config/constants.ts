@@ -19,6 +19,17 @@ export const GAME_CONFIG = {
     REPULSION_FORCE: 15.0, // Outward deflection when prop is too big
     TRIGGER_RADIUS_MARGIN: 1.05, // Trigger coverage relative to hole radius
   },
+  PROGRESSION: {
+    LEVELS: [
+      { level: 1, name: 'Micro Trou', requiredScore: 0, targetRadius: 1.5 },
+      { level: 2, name: 'Moyen Trou', requiredScore: 120, targetRadius: 2.5 },
+      { level: 3, name: 'Grand Trou', requiredScore: 500, targetRadius: 4.2 },
+      { level: 4, name: 'Abîme Colossal', requiredScore: 1500, targetRadius: 6.0 },
+    ],
+    GROWTH_LERP_SPEED: 4.0,
+    CAMERA_ZOOM_LERP_SPEED: 3.5,
+    BASE_CAMERA_RADIUS: 25.0,
+  },
   CAMERA: {
     ALPHA: -Math.PI / 2,
     BETA: Math.PI / 4, // 45 degrees top-down perspective
