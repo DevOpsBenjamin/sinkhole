@@ -6,6 +6,7 @@ import { GrowthManager } from './growthManager';
 import { UIManager } from '../ui/uiManager';
 import { ArenaSpawner } from '../spawning/arenaSpawner';
 import { PropFactory } from '../factories/propFactory';
+import { IngestionTrigger } from '../physics/ingestionTrigger';
 
 export enum GameState {
   MENU = 'MENU',
@@ -24,6 +25,7 @@ export class GameManager {
   private uiManager: UIManager;
   private arenaSpawner: ArenaSpawner;
   private propFactory: PropFactory;
+  private ingestionTrigger: IngestionTrigger;
 
   private state: GameState = GameState.MENU;
   private remainingSeconds: number = GAME_CONFIG.TIMING.ROUND_DURATION;
@@ -36,7 +38,8 @@ export class GameManager {
     growthManager: GrowthManager,
     uiManager: UIManager,
     arenaSpawner: ArenaSpawner,
-    propFactory: PropFactory
+    propFactory: PropFactory,
+    ingestionTrigger: IngestionTrigger
   ) {
     this.scene = scene;
     this.hole = hole;
@@ -45,13 +48,15 @@ export class GameManager {
     this.uiManager = uiManager;
     this.arenaSpawner = arenaSpawner;
     this.propFactory = propFactory;
+    this.ingestionTrigger = ingestionTrigger;
 
     this.setupUIHandlers();
     this.setupProgressionHandlers();
     this.setupTimerLoop();
 
-    // Initial state: Start Menu with controls frozen
+    // Initial state: Start Menu with controls and ingestion frozen
     this.holeController.setEnabled(false);
+    this.ingestionTrigger.setEnabled(false);
   }
 
   private setupUIHandlers(): void {
@@ -101,8 +106,9 @@ export class GameManager {
     this.state = GameState.PLAYING;
     this.remainingSeconds = GAME_CONFIG.TIMING.ROUND_DURATION;
 
-    // Enable hole input controller
+    // Enable hole input controller and physical ingestion
     this.holeController.setEnabled(true);
+    this.ingestionTrigger.setEnabled(true);
 
     // Show in-game HUD
     this.uiManager.showHUD();
@@ -120,8 +126,9 @@ export class GameManager {
   public endGame(): void {
     this.state = GameState.GAME_OVER;
 
-    // Freeze hole input controller
+    // Freeze hole input controller and physical ingestion
     this.holeController.setEnabled(false);
+    this.ingestionTrigger.setEnabled(false);
 
     // Display Game Over summary
     this.uiManager.showGameOver({

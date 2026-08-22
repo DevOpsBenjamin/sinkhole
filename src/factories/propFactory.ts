@@ -125,7 +125,7 @@ export class PropFactory {
     const merged = Mesh.MergeMeshes([cone, base], true, true, undefined, false, true)!;
     merged.name = id;
     merged.position = position.clone();
-    merged.position.y += 0.4;
+    merged.position.y += 0.45;
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('coneMat', new Color3(1.0, 0.42, 0.05), new Color3(0.3, 0.3, 0.3));
 
@@ -156,7 +156,7 @@ export class PropFactory {
       this.scene
     );
     mesh.position = position.clone();
-    mesh.position.y += 0.45;
+    mesh.position.y += 0.5;
     mesh.rotation.y = rotationY;
     mesh.material = this.getOrCreateMaterial('trashMat', new Color3(0.12, 0.48, 0.28));
 
@@ -183,7 +183,7 @@ export class PropFactory {
 
     const mesh = MeshBuilder.CreateBox(id, { size: 0.8 }, this.scene);
     mesh.position = position.clone();
-    mesh.position.y += 0.4;
+    mesh.position.y += 0.45;
     mesh.rotation.y = rotationY;
     mesh.material = this.getOrCreateMaterial('crateMat', new Color3(0.65, 0.45, 0.25));
 
@@ -205,7 +205,7 @@ export class PropFactory {
     const mesh = MeshBuilder.CreateSphere(id, { diameter: 1.0, segments: 8 }, this.scene);
     mesh.scaling.set(1.0, 0.85, 1.0);
     mesh.position = position.clone();
-    mesh.position.y += 0.45;
+    mesh.position.y += 0.5;
     mesh.rotation.y = rotationY;
     mesh.material = this.getOrCreateMaterial('bushMat', new Color3(0.2, 0.65, 0.18));
 
@@ -235,7 +235,7 @@ export class PropFactory {
     const merged = Mesh.MergeMeshes([seat, back], true, true, undefined, false, true)!;
     merged.name = id;
     merged.position = position.clone();
-    merged.position.y += 0.35;
+    merged.position.y += 0.4;
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('benchMat', new Color3(0.55, 0.32, 0.18));
 
@@ -261,7 +261,7 @@ export class PropFactory {
     const merged = Mesh.MergeMeshes([pole, top], true, true, undefined, false, true)!;
     merged.name = id;
     merged.position = position.clone();
-    merged.position.y += 1.6;
+    merged.position.y += 1.65;
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('lampMat', new Color3(0.18, 0.2, 0.25), new Color3(0.4, 0.4, 0.4));
 
@@ -293,7 +293,7 @@ export class PropFactory {
     const merged = Mesh.MergeMeshes([bodyMesh, cabinMesh], true, true, undefined, false, true)!;
     merged.name = id;
     merged.position = position.clone();
-    merged.position.y += 0.6;
+    merged.position.y += 0.65;
     merged.rotation.y = rotationY;
 
     // Pick a distinct car color
@@ -321,20 +321,21 @@ export class PropFactory {
     };
 
     const trunk = MeshBuilder.CreateCylinder(`${id}_trunk`, { diameter: 0.45, height: 1.6 }, this.scene);
-    trunk.position.y = 0.8;
+    trunk.position.y = -1.0;
 
     const foliage = MeshBuilder.CreateSphere(`${id}_foliage`, { diameter: 2.2, segments: 10 }, this.scene);
-    foliage.position.y = 2.4;
+    foliage.position.y = 0.6;
 
     const merged = Mesh.MergeMeshes([trunk, foliage], true, true, undefined, false, true)!;
     merged.name = id;
     merged.position = position.clone();
+    merged.position.y += 1.85;
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('treeMat', new Color3(0.14, 0.52, 0.22));
 
     const shape = new PhysicsShapeCylinder(
-      new Vector3(0, 0, 0),
-      new Vector3(0, 3.6, 0),
+      new Vector3(0, -1.8, 0),
+      new Vector3(0, 1.8, 0),
       1.1,
       this.scene
     );
@@ -358,14 +359,15 @@ export class PropFactory {
     };
 
     const cabin = MeshBuilder.CreateBox(`${id}_cabin`, { width: 1.4, height: 1.4, depth: 1.8 }, this.scene);
-    cabin.position = new Vector3(-1.3, 0.8, 0);
+    cabin.position = new Vector3(-1.3, -0.2, 0);
 
     const cargo = MeshBuilder.CreateBox(`${id}_cargo`, { width: 2.8, height: 1.9, depth: 1.8 }, this.scene);
-    cargo.position = new Vector3(0.7, 1.05, 0);
+    cargo.position = new Vector3(0.7, 0.05, 0);
 
     const merged = Mesh.MergeMeshes([cabin, cargo], true, true, undefined, false, true)!;
     merged.name = id;
     merged.position = position.clone();
+    merged.position.y += 1.05;
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('truckMat', new Color3(0.88, 0.9, 0.95), new Color3(0.3, 0.3, 0.3));
 
@@ -385,14 +387,15 @@ export class PropFactory {
     };
 
     const roof = MeshBuilder.CreateBox(`${id}_roof`, { width: 3.0, height: 0.12, depth: 1.6 }, this.scene);
-    roof.position.y = 2.1;
+    roof.position.y = 1.0;
 
     const backWall = MeshBuilder.CreateBox(`${id}_back`, { width: 2.9, height: 2.0, depth: 0.08 }, this.scene);
-    backWall.position = new Vector3(0, 1.0, -0.75);
+    backWall.position = new Vector3(0, -0.1, -0.75);
 
     const merged = Mesh.MergeMeshes([roof, backWall], true, true, undefined, false, true)!;
     merged.name = id;
     merged.position = position.clone();
+    merged.position.y += 1.15;
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('busStopMat', new Color3(0.2, 0.58, 0.68));
 
@@ -412,16 +415,17 @@ export class PropFactory {
     };
 
     const base = MeshBuilder.CreateBox(`${id}_houseBase`, { width: 4.5, height: 2.6, depth: 4.0 }, this.scene);
-    base.position.y = 1.3;
+    base.position.y = -0.5;
 
     const roof = MeshBuilder.CreateCylinder(`${id}_roof`, { diameter: 4.8, height: 4.2, tessellation: 3 }, this.scene);
     roof.rotation.z = Math.PI / 2;
     roof.rotation.y = Math.PI / 2;
-    roof.position.y = 3.2;
+    roof.position.y = 1.4;
 
     const merged = Mesh.MergeMeshes([base, roof], true, true, undefined, false, true)!;
     merged.name = id;
     merged.position = position.clone();
+    merged.position.y += 1.85;
     merged.rotation.y = rotationY;
     merged.material = this.getOrCreateMaterial('houseMat', new Color3(0.78, 0.68, 0.58));
 

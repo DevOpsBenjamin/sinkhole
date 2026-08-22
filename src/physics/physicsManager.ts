@@ -1,3 +1,4 @@
+import '@babylonjs/core/Physics/physicsEngineComponent';
 import HavokPhysics from '@babylonjs/havok';
 import { HavokPlugin } from '@babylonjs/core/Physics/v2/Plugins/havokPlugin';
 import { Scene } from '@babylonjs/core/scene';

@@ -1,3 +1,5 @@
+import '@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent';
+import '@babylonjs/core/Culling/ray';
 import { Engine } from '@babylonjs/core/Engines/engine';
 import { Scene } from '@babylonjs/core/scene';
 import { Vector3, Quaternion } from '@babylonjs/core/Maths/math.vector';
@@ -203,7 +205,8 @@ export class SceneManager {
       this.growthManager,
       this.uiManager,
       this.arenaSpawner,
-      this.propFactory
+      this.propFactory,
+      this.ingestionTrigger!
     );
   }
 
