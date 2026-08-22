@@ -13,8 +13,14 @@ export const GAME_CONFIG = {
     ROUND_DURATION: 120, // 2 minutes in seconds
   },
   PHYSICS: {
-    GRAVITY: new Vector3(0, -9.81, 0),
+    GRAVITY: Vector3.Zero(), // Gravité radiale dynamique Havok dirigée vers (0,0,0)
+    GRAVITY_MAGNITUDE: 9.81,
     TIME_STEP: 1 / 60,
+  },
+  PLANET: {
+    RADIUS: 35.0, // Rayon de la planète sphérique en mètres
+    SEGMENTS: 64,
+    GRAVITY_ACCELERATION: 9.81, // Accélération centripète dirigée vers (0,0,0)
   },
   INGESTION: {
     CENTRIPETAL_FORCE: 12.0, // Gentle natural horizontal centering

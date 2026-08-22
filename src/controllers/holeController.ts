@@ -79,7 +79,7 @@ export class HoleController {
   };
 
   /**
-   * Calcule le point d'impact du curseur/toucher sur le plan horizontal du sol (Y = 0).
+   * Calcule le point d'impact du curseur/toucher sur la surface sphérique de la planète.
    */
   private updatePointerTarget(): void {
     const ray = this.scene.createPickingRay(
@@ -89,12 +89,12 @@ export class HoleController {
       this.camera
     );
 
-    if (ray && ray.direction.y !== 0) {
-      const distance = -ray.origin.y / ray.direction.y;
-      if (distance > 0) {
+    if (ray) {
+      const hit = this.scene.pickWithRay(ray, (mesh) => mesh.name === 'planetMesh');
+      if (hit && hit.hit && hit.pickedPoint) {
         this.pointerTarget = {
-          x: ray.origin.x + ray.direction.x * distance,
-          z: ray.origin.z + ray.direction.z * distance,
+          x: hit.pickedPoint.x,
+          z: hit.pickedPoint.z,
         };
       }
     }
@@ -178,23 +178,27 @@ export class HoleController {
       if (Math.abs(this.vz) < 0.01) this.vz = 0;
     }
 
-    // 4. Update Position with Arena Boundaries Clamping
+    // 4. Update Position along spherical surface
     const currentPos = this.hole.getPosition();
     const newX = currentPos.x + this.vx * deltaTime;
     const newZ = currentPos.z + this.vz * deltaTime;
 
-    const halfArena = GAME_CONFIG.ARENA.SIZE / 2;
-    const radius = this.hole.getRadius();
-    const margin = radius + 0.5;
+    const planetR = GAME_CONFIG.PLANET.RADIUS;
+    const maxRadius = planetR * 0.85; // Boundary for top-down polar region in current controller pass
 
-    const clampedX = Math.max(-halfArena + margin, Math.min(halfArena - margin, newX));
-    const clampedZ = Math.max(-halfArena + margin, Math.min(halfArena - margin, newZ));
+    const distFromCenter = Math.hypot(newX, newZ);
+    let clampedX = newX;
+    let clampedZ = newZ;
+    if (distFromCenter > maxRadius) {
+      clampedX = (newX / distFromCenter) * maxRadius;
+      clampedZ = (newZ / distFromCenter) * maxRadius;
+    }
 
     this.hole.setPosition(clampedX, clampedZ);
   }
 
   /**
-   * Assure un suivi de caméra souple et amorti centré sur le Trou.
+   * Assure un suivi de caméra souple et amorti centré sur le Trou en 3D.
    */
   private updateCameraFollow(deltaTime: number): void {
     const holePos = this.hole.getPosition();
@@ -203,8 +207,8 @@ export class HoleController {
     const lerpFactor = 1 - Math.exp(-GAME_CONFIG.CAMERA.FOLLOW_SMOOTHING * deltaTime);
 
     target.x += (holePos.x - target.x) * lerpFactor;
+    target.y += (holePos.y - target.y) * lerpFactor;
     target.z += (holePos.z - target.z) * lerpFactor;
-    target.y = 0;
   }
 
   /**

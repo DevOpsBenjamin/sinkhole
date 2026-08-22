@@ -2,7 +2,7 @@ import '@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent';
 import '@babylonjs/core/Culling/ray';
 import { Engine } from '@babylonjs/core/Engines/engine';
 import { Scene } from '@babylonjs/core/scene';
-import { Vector3, Quaternion } from '@babylonjs/core/Maths/math.vector';
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Color4, Color3 } from '@babylonjs/core/Maths/math.color';
 import { ArcRotateCamera } from '@babylonjs/core/Cameras/arcRotateCamera';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
@@ -14,7 +14,7 @@ import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Constants } from '@babylonjs/core/Engines/constants';
 import { PhysicsBody } from '@babylonjs/core/Physics/v2/physicsBody';
 import { PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
-import { PhysicsShapeBox } from '@babylonjs/core/Physics/v2/physicsShape';
+import { PhysicsShapeSphere } from '@babylonjs/core/Physics/v2/physicsShape';
 import { COLLISION_MASKS, GAME_CONFIG } from '../config/constants';
 import { Hole } from '../entities/hole';
 import { HoleController } from '../controllers/holeController';
@@ -75,17 +75,20 @@ export class SceneManager {
   }
 
   private setupSceneEnvironment(): void {
-    this.scene.clearColor = new Color4(0.12, 0.12, 0.18, 1.0);
+    this.scene.clearColor = new Color4(0.08, 0.08, 0.14, 1.0);
     this.scene.ambientColor = new Color3(0.3, 0.3, 0.35);
   }
 
   private setupCamera(): void {
+    const planetR = GAME_CONFIG.PLANET.RADIUS;
+    const initialTarget = new Vector3(0, planetR, 0);
+
     this.camera = new ArcRotateCamera(
       'mainCamera',
       GAME_CONFIG.CAMERA.ALPHA,
       GAME_CONFIG.CAMERA.BETA,
       GAME_CONFIG.CAMERA.RADIUS,
-      GAME_CONFIG.CAMERA.TARGET,
+      initialTarget,
       this.scene
     );
 
@@ -114,7 +117,7 @@ export class SceneManager {
       GAME_CONFIG.LIGHTS.DIRECTION,
       this.scene
     );
-    this.directionalLight.position = new Vector3(20, 40, 20);
+    this.directionalLight.position = new Vector3(30, 60, 30);
     this.directionalLight.intensity = GAME_CONFIG.LIGHTS.DIRECTIONAL_INTENSITY;
 
     // Shadow Generator
@@ -125,21 +128,24 @@ export class SceneManager {
   }
 
   /**
-   * Crée l'arène de jeu, initialise le Trou, son contrôleur, les entités, le trigger d'ingestion, le gestionnaire de croissance, l'UI et la boucle de jeu.
+   * Crée le Planétoïde sphérique, initialise le Trou, son contrôleur, les entités, le trigger d'ingestion, le gestionnaire de croissance, l'UI et la boucle de jeu.
    */
   public setupDemoArena(): void {
-    // 1. Urban Arena Ground with Stencil test (only renders where stencil != 1)
-    this.groundMesh = MeshBuilder.CreateGround(
-      'arenaGround',
-      { width: GAME_CONFIG.ARENA.SIZE, height: GAME_CONFIG.ARENA.SIZE, subdivisions: 4 },
+    const planetRadius = GAME_CONFIG.PLANET.RADIUS;
+
+    // 1. Spherical Planetoid Mesh with Stencil test (only renders where stencil != 1)
+    this.groundMesh = MeshBuilder.CreateSphere(
+      'planetMesh',
+      { diameter: 2 * planetRadius, segments: GAME_CONFIG.PLANET.SEGMENTS },
       this.scene
     );
 
-    const groundMaterial = new StandardMaterial('groundMat', this.scene);
-    groundMaterial.diffuseColor = new Color3(0.25, 0.28, 0.35);
-    groundMaterial.specularColor = new Color3(0.1, 0.1, 0.1);
+    const groundMaterial = new StandardMaterial('planetMat', this.scene);
+    groundMaterial.diffuseColor = new Color3(0.22, 0.26, 0.34);
+    groundMaterial.specularColor = new Color3(0.12, 0.15, 0.2);
+    groundMaterial.ambientColor = new Color3(0.1, 0.12, 0.18);
 
-    // Stencil configuration: Discard ground pixels where the hole mask wrote 1
+    // Stencil configuration: Discard planet pixels where the hole mask wrote 1
     groundMaterial.stencil.enabled = true;
     groundMaterial.stencil.func = Constants.NOTEQUAL;
     groundMaterial.stencil.funcRef = GAME_CONFIG.RENDERING.STENCIL_REF_HOLE;
@@ -151,19 +157,47 @@ export class SceneManager {
     this.groundMesh.receiveShadows = true;
     this.groundMesh.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
 
-    // Ground static physics body with collision layer filtering
-    const groundShape = new PhysicsShapeBox(
+    // Planet static spherical Havok physics body
+    const planetShape = new PhysicsShapeSphere(
       Vector3.Zero(),
-      Quaternion.Identity(),
-      new Vector3(GAME_CONFIG.ARENA.SIZE, 0.2, GAME_CONFIG.ARENA.SIZE),
+      planetRadius,
       this.scene
     );
-    groundShape.filterMembershipMask = COLLISION_MASKS.GROUND;
-    groundShape.filterCollideMask = COLLISION_MASKS.PROP;
+    planetShape.material = { friction: 0.7, restitution: 0.1 };
+    planetShape.filterMembershipMask = COLLISION_MASKS.GROUND;
+    planetShape.filterCollideMask = COLLISION_MASKS.PROP;
 
-    const groundBody = new PhysicsBody(this.groundMesh, PhysicsMotionType.STATIC, false, this.scene);
-    groundBody.shape = groundShape;
-    groundBody.setMassProperties({ mass: 0 });
+    const planetBody = new PhysicsBody(this.groundMesh, PhysicsMotionType.STATIC, false, this.scene);
+    planetBody.shape = planetShape;
+    planetBody.setMassProperties({ mass: 0 });
+
+    // Continuous radial gravity loop applying centripetal force towards (0,0,0) on all interactive entities
+    this.scene.onBeforeRenderObservable.add(() => {
+      const g = GAME_CONFIG.PLANET.GRAVITY_ACCELERATION;
+      const entities = this.getEntities();
+
+      for (let i = 0; i < entities.length; i++) {
+        const entity = entities[i];
+        if (entity.isSwallowed || entity.mesh.isDisposed()) continue;
+        const body = entity.body;
+        if (!body) continue;
+
+        const pos = entity.getPosition();
+        const distSq = pos.x * pos.x + pos.y * pos.y + pos.z * pos.z;
+        if (distSq < 0.001) continue;
+
+        const dist = Math.sqrt(distSq);
+        const dirX = -pos.x / dist;
+        const dirY = -pos.y / dist;
+        const dirZ = -pos.z / dist;
+
+        const mass = entity.definition.mass;
+        body.applyForce(
+          new Vector3(dirX * g * mass, dirY * g * mass, dirZ * g * mass),
+          pos
+        );
+      }
+    });
 
     // 2. Initialize the Hole entity (Mask in Group 0, Abyss/Rim in Group 1)
     this.hole = new Hole(this.scene, GAME_CONFIG.HOLE.INITIAL_RADIUS, GAME_CONFIG.HOLE.DEPTH);
