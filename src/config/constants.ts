@@ -17,8 +17,8 @@ export const GAME_CONFIG = {
     TIME_STEP: 1 / 60,
   },
   INGESTION: {
-    CENTRIPETAL_FORCE: 25.0, // Inward suction force
-    DOWNWARD_EXTRA_GRAVITY: 2.5, // Gravity multiplier when falling in hole
+    CENTRIPETAL_FORCE: 20.0, // Inward suction force
+    DOWNWARD_EXTRA_GRAVITY: 1.3, // Natural falling gravity multiplier in hole
     REPULSION_FORCE: 15.0, // Outward deflection when prop is too big
     TRIGGER_RADIUS_MARGIN: 1.05, // Trigger coverage relative to hole radius
   },
@@ -53,7 +53,7 @@ export const GAME_CONFIG = {
     INITIAL_RADIUS: 1.5,
     MIN_RADIUS: 1.0,
     MAX_RADIUS: 12.0,
-    DEPTH: 8.0,
+    DEPTH: 18.0, // Deep abyss pit for extended 3D falling duration
     TESSELLATION: 64,
   },
   CONTROLS: {

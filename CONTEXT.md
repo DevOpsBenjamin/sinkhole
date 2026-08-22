@@ -6,7 +6,7 @@
 L'entité principale contrôlée par le joueur. Elle est matérialisée par un ensemble synchronisé comprenant un masque stencil planaire au niveau du sol, un cylindre d'Abîme sous le sol, un anneau de bordure et un déclencheur d'ingestion qui se déplacent conjointement sur le plan horizontal (X, Z).
 
 ### L'Abîme (*The Abyss / Hole Interior*)
-Le cylindre ou puits 3D texturé/ombré positionné sous le trou, se déplaçant avec lui, dans lequel tombent les objets avalés pour donner l'illusion d'une profondeur infinie vers le vide.
+Le cylindre 3D texturé avec un dégradé d'illumination vertical et des anneaux de profondeur (18 mètres de profondeur), positionné sous le trou, dans lequel tombent et culbutent les objets avalés pour donner une sensation saisissante de vertige et de profondeur vers le néant.
 
 ### Le Masque Stencil (*Stencil Cutout Mask*)
 L'élément de géométrie planaire invisible (`renderingGroupId = 0`) qui écrit la valeur de référence dans le Stencil Buffer afin de découper visuellement le sol au niveau de l'ouverture du trou sans altérer la topologie du maillage de l'arène.
@@ -24,11 +24,11 @@ La classification discrète d'un objet déterminant le rayon minimal que le Trou
 ### Déclencheur d'Ingestion (*Ingestion Trigger*)
 La zone volumétrique cylindrique centrée sur le trou. Dès qu'une *Entité Avaleuse* compatible en taille entre dans ce volume :
 1. Sa collision avec le sol est désactivée (`shape.filterCollideMask`) et son corps Havok est réinitialisé dans le monde pour purger le cache de contact statique.
-2. Une impulsion descendante initiale, une force d'attraction centripète vers $(X_{hole}, Z_{hole})$ et une gravité descendante amplifiée ($2.5\times$) sont appliquées.
+2. Une impulsion descendante initiale ($v_y = -1.5$ m/s), un couple de culbute 3D aléatoire, une force d'attraction centripète vers $(X_{hole}, Z_{hole})$ et une gravité descendante continue sont appliqués.
 3. Les objets trop grands restent en contact avec le sol et subissent une force répulsive d'évitement.
 
 ### Boucle d'Ingestion (*Ingestion Lifecycle*)
-Le cycle de vie complet d'un objet avalé : détection dans le déclencheur -> chute libre dans l'abîme -> franchissement du seuil de destruction ($Y \le -6.0$ m) -> attribution des points et de la masse -> libération intégrale des composants Havok et du maillage -> renouvellement automatique en bordure d'arène.
+Le cycle de vie complet d'un objet avalé : détection dans le déclencheur -> chute libre et culbute dans l'abîme (1.2 à 2.0 s) -> effet de rétrécissement vortex -> franchissement du seuil de destruction ($Y \le -15.3$ m) -> attribution des points et de la masse -> libération intégrale des composants Havok et du maillage -> renouvellement automatique en bordure d'arène.
 
 ### Jauge de Croissance (*Growth Gauge & Scaling*)
 Le système de progression qui accumule le score et la masse des objets ingérés. À chaque palier franchi, le rayon du trou, le masque stencil, l'Abîme, le trigger physique et le recul de la caméra augmentent proportionnellement et de manière amortie (`Scalar.Lerp`).
