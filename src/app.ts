@@ -3,6 +3,7 @@ import { GAME_CONFIG } from './config/constants';
 import { PhysicsManager } from './physics/physicsManager';
 import { SceneManager } from './rendering/sceneManager';
 import { Hole } from './entities/hole';
+import { HoleController } from './controllers/holeController';
 
 export class GameApp {
   private canvas: HTMLCanvasElement;
@@ -70,6 +71,10 @@ export class GameApp {
 
   public getHole(): Hole | null {
     return this.sceneManager.getHole();
+  }
+
+  public getHoleController(): HoleController | null {
+    return this.sceneManager.getHoleController();
   }
 
   public dispose(): void {

@@ -15,6 +15,7 @@ import { PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlug
 import { PhysicsShapeBox, PhysicsShapeSphere } from '@babylonjs/core/Physics/v2/physicsShape';
 import { GAME_CONFIG } from '../config/constants';
 import { Hole } from '../entities/hole';
+import { HoleController } from '../controllers/holeController';
 
 export class SceneManager {
   private scene: Scene;
@@ -24,6 +25,7 @@ export class SceneManager {
   private shadowGenerator!: ShadowGenerator;
   private groundMesh!: Mesh;
   private hole: Hole | null = null;
+  private holeController: HoleController | null = null;
 
   constructor(private engine: Engine) {
     this.scene = new Scene(this.engine);
@@ -77,10 +79,7 @@ export class SceneManager {
     this.camera.lowerBetaLimit = GAME_CONFIG.CAMERA.LOWER_BETA_LIMIT;
     this.camera.upperBetaLimit = GAME_CONFIG.CAMERA.UPPER_BETA_LIMIT;
 
-    const canvas = this.engine.getRenderingCanvas();
-    if (canvas) {
-      this.camera.attachControl(canvas, true);
-    }
+    // We do NOT attach pointer orbit to camera so left drag and touch are dedicated to Hole steering
   }
 
   private setupLighting(): void {
@@ -111,7 +110,7 @@ export class SceneManager {
   }
 
   /**
-   * Crée l'arène de jeu avec le sol configuré en test Stencil et initialise le Trou.
+   * Crée l'arène de jeu avec le sol configuré en test Stencil, initialise le Trou et son contrôleur.
    */
   public setupDemoArena(): void {
     // 1. Urban Arena Ground with Stencil test (only renders where stencil != 1)
@@ -152,7 +151,10 @@ export class SceneManager {
     this.hole = new Hole(this.scene, GAME_CONFIG.HOLE.INITIAL_RADIUS, GAME_CONFIG.HOLE.DEPTH);
     this.hole.setPosition(0, 0);
 
-    // 3. Sample dynamic props to demonstrate Havok physics and the visual cutout hole
+    // 3. Initialize HoleController for hybrid movement and smooth camera follow
+    this.holeController = new HoleController(this.scene, this.camera, this.hole);
+
+    // 4. Sample dynamic props to demonstrate Havok physics and the visual cutout hole
     const propMat = new StandardMaterial('propMat', this.scene);
     propMat.diffuseColor = new Color3(0.9, 0.4, 0.2);
 
@@ -184,6 +186,10 @@ export class SceneManager {
 
   public getHole(): Hole | null {
     return this.hole;
+  }
+
+  public getHoleController(): HoleController | null {
+    return this.holeController;
   }
 
   public getGround(): Mesh {
