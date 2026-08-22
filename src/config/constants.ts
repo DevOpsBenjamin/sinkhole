@@ -9,6 +9,9 @@ export const COLLISION_MASKS = {
 
 export const GAME_CONFIG = {
   CANVAS_ID: 'renderCanvas',
+  TIMING: {
+    ROUND_DURATION: 120, // 2 minutes in seconds
+  },
   PHYSICS: {
     GRAVITY: new Vector3(0, -9.81, 0),
     TIME_STEP: 1 / 60,
