@@ -98,6 +98,10 @@ export class GameApp {
     return this.sceneManager.getGameManager();
   }
 
+  public getAudioManager() {
+    return this.sceneManager.getAudioManager();
+  }
+
   public getEntities(): SwallowableEntity[] {
     return this.sceneManager.getEntities();
   }

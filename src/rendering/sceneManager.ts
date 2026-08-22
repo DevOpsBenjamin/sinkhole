@@ -25,6 +25,7 @@ import { IngestionTrigger } from '../physics/ingestionTrigger';
 import { GrowthManager } from '../gameplay/growthManager';
 import { UIManager } from '../ui/uiManager';
 import { GameManager } from '../gameplay/gameManager';
+import { AudioManager } from '../audio/audioManager';
 
 export class SceneManager {
   private scene: Scene;
@@ -41,6 +42,7 @@ export class SceneManager {
   private growthManager: GrowthManager | null = null;
   private uiManager: UIManager | null = null;
   private gameManager: GameManager | null = null;
+  private audioManager: AudioManager | null = null;
 
   constructor(private engine: Engine) {
     this.scene = new Scene(this.engine);
@@ -218,19 +220,23 @@ export class SceneManager {
       this.shadowGenerator
     );
 
-    // 6. Initialize GrowthManager for progression, score and dynamic hole scaling
+    // 6. Initialize AudioManager for reactive procedural sound synthesis
+    this.audioManager = new AudioManager();
+
+    // 7. Initialize GrowthManager for progression, score and dynamic hole scaling
     this.growthManager = new GrowthManager(
       this.scene,
       this.hole,
       this.arenaSpawner,
       this.ingestionTrigger,
-      this.propFactory
+      this.propFactory,
+      this.audioManager
     );
 
-    // 7. Initialize UIManager for 2D Babylon GUI (Start Menu, Live HUD, Game Over)
+    // 8. Initialize UIManager for 2D Babylon GUI (Start Menu, Live HUD, Game Over)
     this.uiManager = new UIManager(this.scene);
 
-    // 8. Initialize GameManager to orchestrate states, 2 min timer and replay loop
+    // 9. Initialize GameManager to orchestrate states, speedrun timer and replay loop
     this.gameManager = new GameManager(
       this.scene,
       this.hole,
@@ -239,7 +245,8 @@ export class SceneManager {
       this.uiManager,
       this.arenaSpawner,
       this.propFactory,
-      this.ingestionTrigger!
+      this.ingestionTrigger!,
+      this.audioManager
     );
   }
 
@@ -285,6 +292,10 @@ export class SceneManager {
 
   public getGameManager(): GameManager | null {
     return this.gameManager;
+  }
+
+  public getAudioManager(): AudioManager | null {
+    return this.audioManager;
   }
 
   public getEntities(): SwallowableEntity[] {

@@ -80,5 +80,14 @@ La hiérarchie en 5 Tiers d'entités physiques gouvernant la progression continu
 - *Tier 4 (Macro)* : Immeubles d'habitation, blocs de bureaux ($r_{req} = 6.0 - 9.0\text{ m}$).
 - *Tier 5 (Giga-Macro)* : Gratte-ciels colossaux (16m), tours de télécommunication (20m) ($r_{req} = 12.0 - 18.0\text{ m}$).
 
+### Synthèse Audio Procédurale WebAudio (*Procedural WebAudio Synthesis*)
+Le moteur de synthèse sonore procédurale basé sur l'API WebAudio native sans dépendances d'assets externes :
+- Effets d'ingestion adaptatifs en fréquence et durée (pops aigus pour le Micro Tier 1, thuds pour le Tier 2, bangs percussifs pour le Tier 3, rumbles sub-bass telluriques pour les Tiers 4 & 5).
+- Fanfares d'arpeggio harmoniques ascendentes lors des montées de niveau.
+- Fanfare triomphale quadri-accords lors de la victoire 100% Speedrun.
+
+### Déploiement Automatisé CI/CD (*Automated GitHub Pages CI/CD*)
+Le pipeline d'intégration et de livraison continue via GitHub Actions (`.github/workflows/deploy.yml`), assurant la compilation Vite/TypeScript et la publication automatisée de la release v2.0 sur GitHub Pages.
+
 ### Arène de Jeu (*Urban Arena*)
 Le monde planétaire complet sur lequel évoluent le trou et les entités physiques de tous tiers réparties par biomes concentriques.
