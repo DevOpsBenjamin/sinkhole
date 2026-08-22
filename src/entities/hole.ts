@@ -344,8 +344,10 @@ export class Hole {
     this.tubeColliderBody.setMassProperties({ mass: 0 });
 
     const pos = this.rootNode.position;
-    this.tubeColliderMesh.position.set(pos.x, pos.y, pos.z);
-    this.tubeColliderBody.setTargetTransform(pos, Quaternion.Identity());
+    const quat = this.rootNode.rotationQuaternion ?? Quaternion.Identity();
+    this.tubeColliderMesh.position.copyFrom(pos);
+    this.tubeColliderMesh.rotationQuaternion = quat;
+    this.tubeColliderBody.setTargetTransform(pos, quat);
   }
 
   /**
@@ -367,18 +369,27 @@ export class Hole {
   }
 
   /**
-   * Modifie la position du trou sur la surface de la planète.
+   * Modifie la position du trou sur la surface de la planète et oriente son axe selon la normale locale.
    */
   public setPosition(x: number, z: number, y?: number): void {
     const planetR = GAME_CONFIG.PLANET.RADIUS;
     const computedY = Math.sqrt(Math.max(0, planetR * planetR - x * x - z * z));
     const targetY = y !== undefined ? y : computedY;
 
-    this.rootNode.position.set(x, targetY, z);
+    const pos = new Vector3(x, targetY, z);
+    const len = pos.length();
+    const normal = len > 0.001 ? pos.scale(1 / len) : Vector3.Up();
+
+    const quat = new Quaternion();
+    Quaternion.FromUnitVectorsToRef(Vector3.Up(), normal, quat);
+
+    this.rootNode.position.copyFrom(pos);
+    this.rootNode.rotationQuaternion = quat;
 
     if (this.tubeColliderMesh && this.tubeColliderBody) {
-      this.tubeColliderMesh.position.set(x, targetY, z);
-      this.tubeColliderBody.setTargetTransform(new Vector3(x, targetY, z), Quaternion.Identity());
+      this.tubeColliderMesh.position.copyFrom(pos);
+      this.tubeColliderMesh.rotationQuaternion = quat;
+      this.tubeColliderBody.setTargetTransform(pos, quat);
     }
   }
 
