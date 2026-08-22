@@ -24,11 +24,12 @@ La classification discrète d'un objet déterminant le rayon minimal que le Trou
 ### Déclencheur d'Ingestion (*Ingestion Trigger*)
 La zone volumétrique cylindrique centrée sur le trou. Dès qu'une *Entité Avaleuse* compatible en taille entre dans ce volume :
 1. Sa collision avec le sol est désactivée (`shape.filterCollideMask`) et son corps Havok est réinitialisé dans le monde pour purger le cache de contact statique.
-2. Une impulsion descendante initiale ($v_y = -1.5$ m/s), un couple de culbute 3D aléatoire, une force d'attraction centripète vers $(X_{hole}, Z_{hole})$ et une gravité descendante continue sont appliqués.
-3. Les objets trop grands restent en contact avec le sol et subissent une force répulsive d'évitement.
+2. L'objet est retiré des lanceurs d'ombre (`shadowCasters`) pour éliminer toute ombre fantôme projetée en surface.
+3. Une légère impulsion angulaire 3D, une force d'attraction centripète horizontale douce vers $(X_{hole}, Z_{hole})$ et la gravité naturelle standard ($1.0\times$) sont appliquées.
+4. Les objets trop grands restent en contact avec le sol et subissent une force répulsive d'évitement.
 
 ### Boucle d'Ingestion (*Ingestion Lifecycle*)
-Le cycle de vie complet d'un objet avalé : détection dans le déclencheur -> chute libre et culbute dans l'abîme (1.2 à 2.0 s) -> effet de rétrécissement vortex -> franchissement du seuil de destruction ($Y \le -15.3$ m) -> attribution des points et de la masse -> libération intégrale des composants Havok et du maillage -> renouvellement automatique en bordure d'arène.
+Le cycle de vie complet d'un objet avalé : détection dans le déclencheur -> chute libre et culbute naturelle dans le tube (1.8 à 2.0 s à échelle physique 1.0) -> franchissement du seuil de destruction ($Y \le -15.3$ m) -> attribution des points et de la masse -> libération intégrale des composants Havok et du maillage -> renouvellement automatique en bordure d'arène.
 
 ### Jauge de Croissance (*Growth Gauge & Scaling*)
 Le système de progression qui accumule le score et la masse des objets ingérés. À chaque palier franchi, le rayon du trou, le masque stencil, l'Abîme, le trigger physique et le recul de la caméra augmentent proportionnellement et de manière amortie (`Scalar.Lerp`).

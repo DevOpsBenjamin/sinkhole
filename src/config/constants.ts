@@ -17,8 +17,8 @@ export const GAME_CONFIG = {
     TIME_STEP: 1 / 60,
   },
   INGESTION: {
-    CENTRIPETAL_FORCE: 20.0, // Inward suction force
-    DOWNWARD_EXTRA_GRAVITY: 1.3, // Natural falling gravity multiplier in hole
+    CENTRIPETAL_FORCE: 12.0, // Gentle natural horizontal centering
+    DOWNWARD_EXTRA_GRAVITY: 1.0, // Pure standard Earth gravity (no artificial acceleration)
     REPULSION_FORCE: 15.0, // Outward deflection when prop is too big
     TRIGGER_RADIUS_MARGIN: 1.05, // Trigger coverage relative to hole radius
   },

@@ -181,7 +181,8 @@ export class SceneManager {
     this.ingestionTrigger = new IngestionTrigger(
       this.scene,
       this.hole,
-      () => this.getEntities()
+      () => this.getEntities(),
+      this.shadowGenerator
     );
 
     // 6. Initialize GrowthManager for progression, score and dynamic hole/camera scaling
