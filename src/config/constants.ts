@@ -31,11 +31,12 @@ export const GAME_CONFIG = {
   PROGRESSION: {
     LEVELS: [
       { level: 1, name: 'Micro Trou', requiredScore: 0, targetRadius: 1.0 },
-      { level: 2, name: 'Moyen Trou', requiredScore: 100, targetRadius: 2.2 },
-      { level: 3, name: 'Grand Trou', requiredScore: 400, targetRadius: 4.5 },
-      { level: 4, name: 'Abîme Colossal', requiredScore: 1200, targetRadius: 8.0 },
-      { level: 5, name: 'Dévoreur Planétaire', requiredScore: 3000, targetRadius: 16.0 },
+      { level: 2, name: 'Quartier & Allées', requiredScore: 120, targetRadius: 2.2 },
+      { level: 3, name: 'Boulevard Urbain', requiredScore: 450, targetRadius: 4.5 },
+      { level: 4, name: 'Abîme Colossal', requiredScore: 1400, targetRadius: 8.0 },
+      { level: 5, name: 'Dévoreur Planétaire', requiredScore: 3500, targetRadius: 18.0 },
     ],
+    VICTORY_SCORE: 3500,
     GROWTH_LERP_SPEED: 4.0,
     CAMERA_ZOOM_LERP_SPEED: 3.5,
   },
