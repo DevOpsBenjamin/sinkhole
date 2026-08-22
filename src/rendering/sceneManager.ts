@@ -20,6 +20,7 @@ import { PropFactory } from '../factories/propFactory';
 import { ArenaSpawner } from '../spawning/arenaSpawner';
 import { SwallowableEntity } from '../entities/swallowableEntity';
 import { IngestionTrigger } from '../physics/ingestionTrigger';
+import { GrowthManager } from '../gameplay/growthManager';
 
 export class SceneManager {
   private scene: Scene;
@@ -33,6 +34,7 @@ export class SceneManager {
   private propFactory: PropFactory | null = null;
   private arenaSpawner: ArenaSpawner | null = null;
   private ingestionTrigger: IngestionTrigger | null = null;
+  private growthManager: GrowthManager | null = null;
 
   constructor(private engine: Engine) {
     this.scene = new Scene(this.engine);
@@ -117,7 +119,7 @@ export class SceneManager {
   }
 
   /**
-   * Crée l'arène de jeu, initialise le Trou, son contrôleur, les entités et le déclencheur d'ingestion.
+   * Crée l'arène de jeu, initialise le Trou, son contrôleur, les entités, le trigger d'ingestion et le gestionnaire de croissance.
    */
   public setupDemoArena(): void {
     // 1. Urban Arena Ground with Stencil test (only renders where stencil != 1)
@@ -175,6 +177,16 @@ export class SceneManager {
       this.hole,
       () => this.getEntities()
     );
+
+    // 6. Initialize GrowthManager for progression, score and dynamic hole/camera scaling
+    this.growthManager = new GrowthManager(
+      this.scene,
+      this.camera,
+      this.hole,
+      this.arenaSpawner,
+      this.ingestionTrigger,
+      this.propFactory
+    );
   }
 
   public getScene(): Scene {
@@ -207,6 +219,10 @@ export class SceneManager {
 
   public getIngestionTrigger(): IngestionTrigger | null {
     return this.ingestionTrigger;
+  }
+
+  public getGrowthManager(): GrowthManager | null {
+    return this.growthManager;
   }
 
   public getEntities(): SwallowableEntity[] {
