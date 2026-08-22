@@ -6,12 +6,14 @@ import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTextur
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
+import { PointLight } from '@babylonjs/core/Lights/pointLight';
 import { Constants } from '@babylonjs/core/Engines/constants';
 import { GAME_CONFIG } from '../config/constants';
 
 /**
  * Entité Le Trou (The Hole / Sinkhole).
- * Gère le masque Stencil Buffer, l'Abîme intérieur avec texture de profondeur 3D, le fond et la bordure visuelle.
+ * Gère le masque Stencil Buffer, l'Abîme intérieur avec texture de profondeur 3D,
+ * la source de lumière interne illuminant les objets en chute, le fond et la bordure visuelle.
  */
 export class Hole {
   private scene: Scene;
@@ -20,7 +22,9 @@ export class Hole {
   private abyssMesh: Mesh;
   private abyssBottom: Mesh;
   private holeRim: Mesh;
+  private innerLight: PointLight;
   private abyssTexture: DynamicTexture | null = null;
+  private bottomTexture: DynamicTexture | null = null;
   private currentRadius: number;
   private depth: number;
 
@@ -43,14 +47,31 @@ export class Hole {
     // 2. Abyss Interior Cylinder (Group 1 - 3D Depth Pit with gradient & rings)
     this.abyssMesh = this.createAbyssMesh();
 
-    // 3. Abyss Bottom Cap (Group 1 - Infinite Void Illusion)
+    // 3. Abyss Bottom Cap (Group 1 - Vortex Void Illusion)
     this.abyssBottom = this.createAbyssBottom();
 
     // 4. Hole Rim Border (Group 1 - Stylized Beveled Outline)
     this.holeRim = this.createHoleRim();
 
+    // 5. Internal Point Light illuminating falling props inside the tunnel
+    this.innerLight = this.createInnerLight();
+
     // Apply initial radius scaling
     this.updateScaling();
+  }
+
+  /**
+   * Crée la source de lumière interne positionnée dans le tunnel du trou.
+   * Illumine vivement les objets lorsqu'ils tombent sous la surface du sol.
+   */
+  private createInnerLight(): PointLight {
+    const light = new PointLight('holeInnerLight', new Vector3(0, -3.0, 0), this.scene);
+    light.parent = this.rootNode;
+    light.intensity = 2.2;
+    light.range = 35.0;
+    light.diffuse = new Color3(0.65, 0.8, 1.0); // Lumière cyan/bleu clair vive
+    light.specular = new Color3(0.9, 0.95, 1.0);
+    return light;
   }
 
   /**
@@ -90,14 +111,14 @@ export class Hole {
   }
 
   /**
-   * Crée le cylindre 3D de l'Abîme avec un dégradé vertical et des anneaux de repère de profondeur 3D.
+   * Crée le cylindre 3D de l'Abîme avec un dégradé vertical haute visibilité et des anneaux de repère 3D.
    */
   private createAbyssMesh(): Mesh {
     const cylinder = MeshBuilder.CreateCylinder(
       'abyssInterior',
       {
         diameterTop: 2,
-        diameterBottom: 1.9,
+        diameterBottom: 1.95,
         height: this.depth,
         tessellation: GAME_CONFIG.HOLE.TESSELLATION,
         sideOrientation: Mesh.DOUBLESIDE,
@@ -110,44 +131,49 @@ export class Hole {
     cylinder.parent = this.rootNode;
     cylinder.isPickable = false;
 
-    // Generate dynamic vertical gradient texture with depth rings for striking 3D parallax cues
+    // Generate dynamic vertical gradient texture with highly visible depth rings and structural panels
     this.abyssTexture = new DynamicTexture(
       'abyssWallTexture',
-      { width: 256, height: 1024 },
+      { width: 512, height: 512 },
       this.scene,
       false
     );
     const ctx = this.abyssTexture.getContext();
 
-    // Vertical illumination gradient from ground opening into deep dark abyss
-    const gradient = ctx.createLinearGradient(0, 0, 0, 1024);
-    gradient.addColorStop(0.0, '#3e4659'); // Visible illuminated top inner lip
-    gradient.addColorStop(0.05, '#282e3d'); // Upper pit wall
-    gradient.addColorStop(0.18, '#181b24'); // Mid upper depth
-    gradient.addColorStop(0.4, '#0d0f15'); // Mid lower depth
-    gradient.addColorStop(0.75, '#040508'); // Deep pit
-    gradient.addColorStop(1.0, '#010103'); // Void black
+    // Vertical illumination gradient from illuminated top opening to deep abyss
+    const gradient = ctx.createLinearGradient(0, 0, 0, 512);
+    gradient.addColorStop(0.0, '#5a667f'); // Haut de paroi claire et bien visible sous l'ouverture
+    gradient.addColorStop(0.12, '#3e485c'); // Paroi supérieure
+    gradient.addColorStop(0.35, '#252c3c'); // Milieu supérieur
+    gradient.addColorStop(0.65, '#121620'); // Profondeur sombre
+    gradient.addColorStop(1.0, '#04060a'); // Bas du puits
 
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 256, 1024);
+    ctx.fillRect(0, 0, 512, 512);
 
-    // Subtle horizontal depth ring markers
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 3;
-    for (let y = 60; y < 950; y += 75) {
+    // Highly visible horizontal depth ring markers with glowing cyan/white style
+    for (let y = 30; y < 500; y += 45) {
+      ctx.strokeStyle = 'rgba(100, 200, 255, 0.4)';
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(256, y);
+      ctx.lineTo(512, y);
       ctx.stroke();
+
+      // Intercalary grid dots
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      for (let x = 16; x < 512; x += 32) {
+        ctx.fillRect(x - 2, y - 2, 4, 4);
+      }
     }
 
-    // Vertical wall seam accents
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-    ctx.lineWidth = 2;
-    for (let x = 0; x < 256; x += 64) {
+    // Vertical wall structural pillars
+    for (let x = 0; x < 512; x += 64) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x, 1024);
+      ctx.lineTo(x, 512);
       ctx.stroke();
     }
 
@@ -156,7 +182,8 @@ export class Hole {
     const abyssMat = new StandardMaterial('abyssMat', this.scene);
     abyssMat.diffuseTexture = this.abyssTexture;
     abyssMat.emissiveTexture = this.abyssTexture;
-    abyssMat.specularColor = new Color3(0.05, 0.05, 0.08);
+    abyssMat.emissiveColor = new Color3(0.6, 0.6, 0.65);
+    abyssMat.specularColor = new Color3(0.3, 0.3, 0.4);
     abyssMat.backFaceCulling = false;
 
     cylinder.material = abyssMat;
@@ -164,7 +191,7 @@ export class Hole {
   }
 
   /**
-   * Crée le fond de l'Abîme simulant le gouffre sombre sans fin.
+   * Crée le fond de l'Abîme avec un vortex concentrique marquant le point de fuite.
    */
   private createAbyssBottom(): Mesh {
     const bottom = MeshBuilder.CreateDisc(
@@ -183,10 +210,32 @@ export class Hole {
     bottom.parent = this.rootNode;
     bottom.isPickable = false;
 
+    this.bottomTexture = new DynamicTexture('abyssBottomTexture', { width: 256, height: 256 }, this.scene, false);
+    const ctx = this.bottomTexture.getContext();
+
+    // Dark radial gradient
+    const radial = ctx.createRadialGradient(128, 128, 5, 128, 128, 128);
+    radial.addColorStop(0.0, '#101a30');
+    radial.addColorStop(0.5, '#060a14');
+    radial.addColorStop(1.0, '#020306');
+
+    ctx.fillStyle = radial;
+    ctx.fillRect(0, 0, 256, 256);
+
+    // Concentric rings
+    ctx.strokeStyle = 'rgba(80, 160, 255, 0.25)';
+    ctx.lineWidth = 2;
+    for (let r = 20; r < 120; r += 25) {
+      ctx.beginPath();
+      ctx.arc(128, 128, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    this.bottomTexture.update();
+
     const bottomMat = new StandardMaterial('abyssBottomMat', this.scene);
-    bottomMat.diffuseColor = new Color3(0.005, 0.005, 0.01);
-    bottomMat.ambientColor = new Color3(0.005, 0.005, 0.01);
-    bottomMat.emissiveColor = new Color3(0.005, 0.005, 0.01);
+    bottomMat.diffuseTexture = this.bottomTexture;
+    bottomMat.emissiveTexture = this.bottomTexture;
+    bottomMat.emissiveColor = new Color3(0.5, 0.5, 0.6);
     bottomMat.specularColor = new Color3(0, 0, 0);
 
     bottom.material = bottomMat;
@@ -201,22 +250,23 @@ export class Hole {
       'holeRim',
       {
         diameter: 2.02,
-        thickness: 0.09,
+        thickness: 0.10,
         tessellation: GAME_CONFIG.HOLE.TESSELLATION,
       },
       this.scene
     );
 
-    rim.position.y = 0.015;
+    rim.position.y = 0.018;
     rim.renderingGroupId = GAME_CONFIG.RENDERING.STENCIL_GROUP_ID_WORLD;
     rim.parent = this.rootNode;
     rim.isPickable = false;
 
     const rimMat = new StandardMaterial('holeRimMat', this.scene);
-    rimMat.diffuseColor = new Color3(0.18, 0.2, 0.28);
-    rimMat.specularColor = new Color3(0.5, 0.5, 0.65);
-    rimMat.specularPower = 32;
-    rimMat.ambientColor = new Color3(0.1, 0.12, 0.16);
+    rimMat.diffuseColor = new Color3(0.24, 0.28, 0.38);
+    rimMat.emissiveColor = new Color3(0.08, 0.1, 0.15);
+    rimMat.specularColor = new Color3(0.7, 0.75, 0.9);
+    rimMat.specularPower = 48;
+    rimMat.ambientColor = new Color3(0.15, 0.18, 0.25);
 
     rim.material = rimMat;
     return rim;
@@ -230,7 +280,7 @@ export class Hole {
 
     // Disc scaling (rotation X = PI/2 -> X and Y scale local plane)
     this.stencilMask.scaling.set(r, r, 1);
-    this.abyssBottom.scaling.set(r * 0.95, r * 0.95, 1);
+    this.abyssBottom.scaling.set(r * 0.96, r * 0.96, 1);
 
     // 3D cylinder & torus scaling (X, Z horizontal radii)
     this.abyssMesh.scaling.set(r, 1, r);
@@ -305,6 +355,11 @@ export class Hole {
   public dispose(): void {
     this.abyssTexture?.dispose();
     this.abyssTexture = null;
+
+    this.bottomTexture?.dispose();
+    this.bottomTexture = null;
+
+    this.innerLight.dispose();
 
     this.stencilMask.material?.dispose();
     this.stencilMask.dispose();
