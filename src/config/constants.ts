@@ -1,10 +1,23 @@
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 
+export const COLLISION_MASKS = {
+  GROUND: 1 << 0,     // 0x0001
+  PROP: 1 << 1,       // 0x0002
+  WALL: 1 << 2,       // 0x0004
+  SWALLOWED: 1 << 3,  // 0x0008
+} as const;
+
 export const GAME_CONFIG = {
   CANVAS_ID: 'renderCanvas',
   PHYSICS: {
     GRAVITY: new Vector3(0, -9.81, 0),
     TIME_STEP: 1 / 60,
+  },
+  INGESTION: {
+    CENTRIPETAL_FORCE: 25.0, // Inward suction force
+    DOWNWARD_EXTRA_GRAVITY: 2.5, // Gravity multiplier when falling in hole
+    REPULSION_FORCE: 15.0, // Outward deflection when prop is too big
+    TRIGGER_RADIUS_MARGIN: 1.05, // Trigger coverage relative to hole radius
   },
   CAMERA: {
     ALPHA: -Math.PI / 2,
