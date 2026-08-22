@@ -254,19 +254,20 @@ export class PropFactory {
       points: 60,
       requiredHoleRadius: 1.6,
       mass: 20,
-      dimensions: new Vector3(1.8, 0.7, 0.7),
+      dimensions: new Vector3(1.8, 0.6, 0.7),
     };
 
     const seat = MeshBuilder.CreateBox(`${id}_seat`, { width: 1.8, height: 0.1, depth: 0.6 }, this.scene);
-    const back = MeshBuilder.CreateBox(`${id}_back`, { width: 1.8, height: 0.5, depth: 0.08 }, this.scene);
-    back.position = new Vector3(0, 0.3, -0.26);
+    seat.position.y = -0.15;
+    const back = MeshBuilder.CreateBox(`${id}_back`, { width: 1.8, height: 0.4, depth: 0.08 }, this.scene);
+    back.position = new Vector3(0, 0.1, -0.26);
 
     const merged = Mesh.MergeMeshes([seat, back], true, true, undefined, false, true)!;
     merged.name = id;
     merged.material = this.getOrCreateMaterial('benchMat', new Color3(0.55, 0.32, 0.18));
 
-    const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(1.8, 0.7, 0.7), this.scene);
-    return { mesh: merged, shape, def, heightOffset: 0.4 };
+    const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(1.8, 0.6, 0.7), this.scene);
+    return { mesh: merged, shape, def, heightOffset: 0.3 };
   }
 
   private buildStreetLamp(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
@@ -277,25 +278,25 @@ export class PropFactory {
       points: 80,
       requiredHoleRadius: 1.8,
       mass: 25,
-      dimensions: new Vector3(0.5, 3.2, 0.5),
+      dimensions: new Vector3(0.5, 3.0, 0.5),
     };
 
     const pole = MeshBuilder.CreateCylinder(`${id}_pole`, { diameter: 0.12, height: 3.0 }, this.scene);
     const top = MeshBuilder.CreateBox(`${id}_top`, { width: 0.5, height: 0.25, depth: 0.3 }, this.scene);
-    top.position.y = 1.5;
+    top.position.y = 1.4;
 
     const merged = Mesh.MergeMeshes([pole, top], true, true, undefined, false, true)!;
     merged.name = id;
     merged.material = this.getOrCreateMaterial('lampMat', new Color3(0.18, 0.2, 0.25), new Color3(0.4, 0.4, 0.4));
 
     const shape = new PhysicsShapeCylinder(
-      new Vector3(0, -1.6, 0),
-      new Vector3(0, 1.6, 0),
+      new Vector3(0, -1.5, 0),
+      new Vector3(0, 1.5, 0),
       0.25,
       this.scene
     );
 
-    return { mesh: merged, shape, def, heightOffset: 1.65 };
+    return { mesh: merged, shape, def, heightOffset: 1.5 };
   }
 
   private buildSedanCar(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
@@ -306,12 +307,13 @@ export class PropFactory {
       points: 150,
       requiredHoleRadius: 2.2,
       mass: 45,
-      dimensions: new Vector3(2.6, 1.2, 1.4),
+      dimensions: new Vector3(2.6, 1.0, 1.4),
     };
 
-    const bodyMesh = MeshBuilder.CreateBox(`${id}_body`, { width: 2.6, height: 0.7, depth: 1.4 }, this.scene);
-    const cabinMesh = MeshBuilder.CreateBox(`${id}_cabin`, { width: 1.5, height: 0.5, depth: 1.2 }, this.scene);
-    cabinMesh.position = new Vector3(-0.2, 0.55, 0);
+    const bodyMesh = MeshBuilder.CreateBox(`${id}_body`, { width: 2.6, height: 0.6, depth: 1.4 }, this.scene);
+    bodyMesh.position.y = -0.2;
+    const cabinMesh = MeshBuilder.CreateBox(`${id}_cabin`, { width: 1.5, height: 0.4, depth: 1.2 }, this.scene);
+    cabinMesh.position = new Vector3(-0.2, 0.3, 0);
 
     const merged = Mesh.MergeMeshes([bodyMesh, cabinMesh], true, true, undefined, false, true)!;
     merged.name = id;
@@ -324,8 +326,8 @@ export class PropFactory {
     const color = carColors[this.idCounter % carColors.length];
     merged.material = this.getOrCreateMaterial(`carMat_${this.idCounter % carColors.length}`, color, new Color3(0.4, 0.4, 0.4));
 
-    const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(2.6, 1.2, 1.4), this.scene);
-    return { mesh: merged, shape, def, heightOffset: 0.65 };
+    const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(2.6, 1.0, 1.4), this.scene);
+    return { mesh: merged, shape, def, heightOffset: 0.5 };
   }
 
   private buildLargeTree(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
@@ -336,11 +338,11 @@ export class PropFactory {
       points: 130,
       requiredHoleRadius: 2.4,
       mass: 40,
-      dimensions: new Vector3(2.4, 3.6, 2.4),
+      dimensions: new Vector3(2.4, 3.4, 2.4),
     };
 
     const trunk = MeshBuilder.CreateCylinder(`${id}_trunk`, { diameter: 0.45, height: 1.6 }, this.scene);
-    trunk.position.y = -1.0;
+    trunk.position.y = -0.9;
 
     const foliage = MeshBuilder.CreateSphere(`${id}_foliage`, { diameter: 2.2, segments: 10 }, this.scene);
     foliage.position.y = 0.6;
@@ -350,13 +352,13 @@ export class PropFactory {
     merged.material = this.getOrCreateMaterial('treeMat', new Color3(0.14, 0.52, 0.22));
 
     const shape = new PhysicsShapeCylinder(
-      new Vector3(0, -1.8, 0),
-      new Vector3(0, 1.8, 0),
+      new Vector3(0, -1.7, 0),
+      new Vector3(0, 1.7, 0),
       1.1,
       this.scene
     );
 
-    return { mesh: merged, shape, def, heightOffset: 1.85 };
+    return { mesh: merged, shape, def, heightOffset: 1.7 };
   }
 
   // -------------------------------------------------------------
@@ -371,21 +373,21 @@ export class PropFactory {
       points: 350,
       requiredHoleRadius: 3.2,
       mass: 150,
-      dimensions: new Vector3(4.2, 2.0, 1.8),
+      dimensions: new Vector3(4.2, 1.6, 1.8),
     };
 
-    const cabin = MeshBuilder.CreateBox(`${id}_cabin`, { width: 1.4, height: 1.4, depth: 1.8 }, this.scene);
+    const cabin = MeshBuilder.CreateBox(`${id}_cabin`, { width: 1.4, height: 1.2, depth: 1.8 }, this.scene);
     cabin.position = new Vector3(-1.3, -0.2, 0);
 
-    const cargo = MeshBuilder.CreateBox(`${id}_cargo`, { width: 2.8, height: 1.9, depth: 1.8 }, this.scene);
-    cargo.position = new Vector3(0.7, 0.05, 0);
+    const cargo = MeshBuilder.CreateBox(`${id}_cargo`, { width: 2.8, height: 1.6, depth: 1.8 }, this.scene);
+    cargo.position = new Vector3(0.7, 0.0, 0);
 
     const merged = Mesh.MergeMeshes([cabin, cargo], true, true, undefined, false, true)!;
     merged.name = id;
     merged.material = this.getOrCreateMaterial('truckMat', new Color3(0.88, 0.9, 0.95), new Color3(0.3, 0.3, 0.3));
 
-    const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(4.2, 2.0, 1.8), this.scene);
-    return { mesh: merged, shape, def, heightOffset: 1.05 };
+    const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(4.2, 1.6, 1.8), this.scene);
+    return { mesh: merged, shape, def, heightOffset: 0.8 };
   }
 
   private buildBusStop(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
@@ -396,21 +398,21 @@ export class PropFactory {
       points: 300,
       requiredHoleRadius: 3.0,
       mass: 120,
-      dimensions: new Vector3(3.0, 2.2, 1.6),
+      dimensions: new Vector3(3.0, 2.0, 1.6),
     };
+
+    const backWall = MeshBuilder.CreateBox(`${id}_back`, { width: 2.9, height: 2.0, depth: 0.08 }, this.scene);
+    backWall.position = new Vector3(0, 0, -0.75);
 
     const roof = MeshBuilder.CreateBox(`${id}_roof`, { width: 3.0, height: 0.12, depth: 1.6 }, this.scene);
     roof.position.y = 1.0;
-
-    const backWall = MeshBuilder.CreateBox(`${id}_back`, { width: 2.9, height: 2.0, depth: 0.08 }, this.scene);
-    backWall.position = new Vector3(0, -0.1, -0.75);
 
     const merged = Mesh.MergeMeshes([roof, backWall], true, true, undefined, false, true)!;
     merged.name = id;
     merged.material = this.getOrCreateMaterial('busStopMat', new Color3(0.2, 0.58, 0.68));
 
-    const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(3.0, 2.2, 1.6), this.scene);
-    return { mesh: merged, shape, def, heightOffset: 1.15 };
+    const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(3.0, 2.0, 1.6), this.scene);
+    return { mesh: merged, shape, def, heightOffset: 1.0 };
   }
 
   private buildHousePavilion(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
@@ -424,19 +426,19 @@ export class PropFactory {
       dimensions: new Vector3(4.5, 3.6, 4.0),
     };
 
-    const base = MeshBuilder.CreateBox(`${id}_houseBase`, { width: 4.5, height: 2.6, depth: 4.0 }, this.scene);
-    base.position.y = -0.5;
+    const base = MeshBuilder.CreateBox(`${id}_houseBase`, { width: 4.5, height: 2.2, depth: 4.0 }, this.scene);
+    base.position.y = -0.7;
 
-    const roof = MeshBuilder.CreateCylinder(`${id}_roof`, { diameter: 4.8, height: 4.2, tessellation: 3 }, this.scene);
+    const roof = MeshBuilder.CreateCylinder(`${id}_roof`, { diameter: 4.0, height: 4.2, tessellation: 3 }, this.scene);
     roof.rotation.z = Math.PI / 2;
     roof.rotation.y = Math.PI / 2;
-    roof.position.y = 1.4;
+    roof.position.y = 1.1;
 
     const merged = Mesh.MergeMeshes([base, roof], true, true, undefined, false, true)!;
     merged.name = id;
     merged.material = this.getOrCreateMaterial('houseMat', new Color3(0.78, 0.68, 0.58));
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(4.5, 3.6, 4.0), this.scene);
-    return { mesh: merged, shape, def, heightOffset: 1.85 };
+    return { mesh: merged, shape, def, heightOffset: 1.8 };
   }
 }
