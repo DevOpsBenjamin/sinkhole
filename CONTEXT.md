@@ -23,8 +23,8 @@ La classification discrète d'un objet déterminant le rayon minimal que le Trou
 
 ### Déclencheur d'Ingestion (*Ingestion Trigger*)
 La zone volumétrique cylindrique centrée sur le trou. Dès qu'une *Entité Avaleuse* compatible en taille entre dans ce volume :
-1. Sa collision avec le sol est désactivée (`shape.filterCollideMask`).
-2. Une force d'attraction centripète vers $(X_{hole}, Z_{hole})$ et une gravité amplifiée ($2.5\times$) sont appliquées.
+1. Sa collision avec le sol est désactivée (`shape.filterCollideMask`) et son corps Havok est réinitialisé dans le monde pour purger le cache de contact statique.
+2. Une impulsion descendante initiale, une force d'attraction centripète vers $(X_{hole}, Z_{hole})$ et une gravité descendante amplifiée ($2.5\times$) sont appliquées.
 3. Les objets trop grands restent en contact avec le sol et subissent une force répulsive d'évitement.
 
 ### Boucle d'Ingestion (*Ingestion Lifecycle*)
