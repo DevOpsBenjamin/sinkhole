@@ -8,6 +8,7 @@ import { SwallowableEntity } from '../entities/swallowableEntity';
 import { IngestionTrigger } from '../physics/ingestionTrigger';
 import { ArenaSpawner, CONCENTRIC_BIOMES } from '../spawning/arenaSpawner';
 import { PropFactory } from '../factories/propFactory';
+import { AudioManager } from '../audio/audioManager';
 
 export interface ScoreEvent {
   score: number;
@@ -30,6 +31,7 @@ export class GrowthManager {
   private arenaSpawner: ArenaSpawner;
   private ingestionTrigger: IngestionTrigger;
   private propFactory: PropFactory | null;
+  private audioManager: AudioManager | null;
 
   private score = 0;
   private swallowedCount = 0;
@@ -50,13 +52,15 @@ export class GrowthManager {
     hole: Hole,
     arenaSpawner: ArenaSpawner,
     ingestionTrigger: IngestionTrigger,
-    propFactory: PropFactory | null = null
+    propFactory: PropFactory | null = null,
+    audioManager: AudioManager | null = null
   ) {
     this.scene = scene;
     this.hole = hole;
     this.arenaSpawner = arenaSpawner;
     this.ingestionTrigger = ingestionTrigger;
     this.propFactory = propFactory;
+    this.audioManager = audioManager;
 
     this.currentRadius = hole.getRadius();
     this.targetRadius = hole.getRadius();
@@ -87,6 +91,11 @@ export class GrowthManager {
     this.swallowedCount++;
     this.swallowedMass += mass;
 
+    // Play reactive swallow audio effect
+    if (this.audioManager) {
+      this.audioManager.playSwallowSound(entity.getTier(), mass);
+    }
+
     // Evaluate progression and update target radius
     this.evaluateLevelProgression();
 
@@ -107,6 +116,17 @@ export class GrowthManager {
     }
   }
 
+  public addScore(points: number): void {
+    this.score += points;
+    this.swallowedCount++;
+    this.evaluateLevelProgression();
+    this.onScoreChangedObservable.notifyObservers({
+      score: this.score,
+      addedPoints: points,
+      totalSwallowed: this.swallowedCount,
+    });
+  }
+
   private evaluateLevelProgression(): void {
     const levels = GAME_CONFIG.PROGRESSION.LEVELS;
     let newLevelIndex = this.currentLevelIndex;
@@ -122,6 +142,10 @@ export class GrowthManager {
     if (newLevelIndex > this.currentLevelIndex) {
       this.currentLevelIndex = newLevelIndex;
       const lvl = levels[this.currentLevelIndex];
+
+      if (this.audioManager) {
+        this.audioManager.playLevelUpSound(lvl.level);
+      }
 
       this.onLevelUpObservable.notifyObservers({
         level: lvl.level,

@@ -7,6 +7,7 @@ import { UIManager, GameSummaryStats } from '../ui/uiManager';
 import { ArenaSpawner } from '../spawning/arenaSpawner';
 import { PropFactory } from '../factories/propFactory';
 import { IngestionTrigger } from '../physics/ingestionTrigger';
+import { AudioManager } from '../audio/audioManager';
 
 export enum GameState {
   MENU = 'MENU',
@@ -28,6 +29,7 @@ export class GameManager {
   private arenaSpawner: ArenaSpawner;
   private propFactory: PropFactory;
   private ingestionTrigger: IngestionTrigger;
+  private audioManager: AudioManager | null;
 
   private state: GameState = GameState.MENU;
   private elapsedSeconds = 0;
@@ -41,7 +43,8 @@ export class GameManager {
     uiManager: UIManager,
     arenaSpawner: ArenaSpawner,
     propFactory: PropFactory,
-    ingestionTrigger: IngestionTrigger
+    ingestionTrigger: IngestionTrigger,
+    audioManager: AudioManager | null = null
   ) {
     this.scene = scene;
     this.hole = hole;
@@ -51,6 +54,7 @@ export class GameManager {
     this.arenaSpawner = arenaSpawner;
     this.propFactory = propFactory;
     this.ingestionTrigger = ingestionTrigger;
+    this.audioManager = audioManager;
 
     this.setupUIHandlers();
     this.setupProgressionHandlers();
@@ -170,6 +174,11 @@ export class GameManager {
 
     // Display 100% Victory Screen
     this.uiManager.showVictory(stats);
+
+    // Play triumphant victory sound
+    if (this.audioManager) {
+      this.audioManager.playVictorySound();
+    }
 
     console.log(`[GameManager] 100% VICTORY! Planet cleansed in ${this.elapsedSeconds.toFixed(2)}s!`);
   }
