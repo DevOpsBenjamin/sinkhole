@@ -1,74 +1,74 @@
 # 🕳️ Sinkhole
 
-> An insatiable physics-driven 3D web game built with **Babylon.js** and **Havok Physics (Wasm)**.
+> An insatiable physics-driven 3D web game built with **Babylon.js 7+** and **Havok Physics (Wasm)**.
+
+[![CI](https://github.com/DevOpsBenjamin/sinkhole/actions/workflows/ci.yml/badge.svg)](https://github.com/DevOpsBenjamin/sinkhole/actions/workflows/ci.yml)
+[![Deploy to GitHub Pages](https://github.com/DevOpsBenjamin/sinkhole/actions/workflows/deploy.yml/badge.svg)](https://github.com/DevOpsBenjamin/sinkhole/actions/workflows/deploy.yml)
+
+🎮 **[Jouer en direct sur GitHub Pages](https://devopsbenjamin.github.io/sinkhole/)**
 
 ---
 
 ## 🎮 Concept
 
-**Sinkhole** is a fast-paced web arcade game inspired by the classic "Hole" game genre (*Hole.io*, *Donut County*). 
+**Sinkhole** est un jeu d'arcade 3D Web temps réel inspiré du genre "Hole" (*Hole.io*, *Donut County*). 
 
-You control a growing hole moving across the ground, devouring everything in your path. As you swallow smaller props (traffic cones, benches, trees), your hole expands, allowing you to swallow larger structures (cars, buildings, skyscrapers).
+Le joueur contrôle un trou insatiable qui se déplace sur le sol de l'arène urbaine, dévorant tout sur son passage. En avalant des entités du décor classées par Tiers (cônes, poubelles, bancs, voitures, arbres, camions, maisons), le trou grossit et devient capable d'avaler des structures de plus en plus massives.
 
 ---
 
 ## ⚡ Tech Stack
 
-- **Engine:** [Babylon.js 7+](https://www.babylonjs.com/) (WebGPU & WebGL2)
-- **Physics Engine:** [Havok Physics](https://doc.babylonjs.com/features/featuresDeepDive/physics/havokPlugin) (WebAssembly)
-- **Language / Bundler:** [TypeScript](https://www.typescriptlang.org/) + [Vite](https://vitejs.dev/)
-- **Visual FX:** Stencil Buffer masking for real-time terrain cutout & hole depth
+- **Moteur 3D :** [Babylon.js 7+](https://www.babylonjs.com/) (WebGL2 & WebGPU)
+- **Moteur Physique :** [Havok Physics](https://doc.babylonjs.com/features/featuresDeepDive/physics/havokPlugin) (WebAssembly)
+- **Langage & Bundler :** [TypeScript](https://www.typescriptlang.org/) strict + [Vite](https://vitejs.dev/)
+- **Effets Visuels :** Masquage Stencil Buffer temps réel pour perforation optique du sol et profondeur infinie de l'Abîme
+- **Déploiement :** GitHub Actions & GitHub Pages (Front-End 100% statique avec binaire WASM optimisé)
 
 ---
 
-## 🚀 Key Mechanics & Technical Highlights
+## 🚀 Fonctionnalités & Points Forts Techniques
 
-* **Real-time Stencil Masking:** Clean optical illusion of ground perforation without costly mesh boolean operations.
-* **Wasm-powered Rigid Body Simulation:** Hundreds of simultaneously active physics bodies powered by Havok's native collision solver.
-* **Dynamic Collision Filtering:** Seamless transition of objects from ground colliders into localized gravity triggers.
-* **Progressive Growth System:** Real-time scaling of the hole collider, stencil mask, and camera view based on score.
-
----
-
-## 🗺️ Roadmap & Milestones
-
-- [ ] **Phase 1: Minimal Playable Prototype (PoC)**
-  - [ ] Vite + TypeScript + Babylon.js + Havok setup
-  - [ ] Player movement controls (Keyboard / Mouse / Touch)
-  - [ ] Stencil buffer hole cutout shader & floor depth
-  - [ ] Havok physics integration (ground collider + prop spawns)
-  - [ ] Collision filter triggers (falling objects + suction)
-  - [ ] Score system & hole scaling
-
-- [ ] **Phase 2: Environment & Map Design**
-  - [ ] Low-poly procedural or modular city environment
-  - [ ] Varied tiers of swallowable items (Tier 1: Trash/Cones, Tier 2: Cars/Trees, Tier 3: Houses, Tier 4: Buildings)
-  - [ ] Spawning logic and respawn/drop mechanics
-
-- [ ] **Phase 3: Game Loop & Polish**
-  - [ ] Timer / High Score arcade mode
-  - [ ] Babylon GUI HUD (Score, Level progress bar, Timer)
-  - [ ] Sound FX (Slurp, drop, rumble, level up)
-  - [ ] Particle FX on swallowing
+* **Masquage Stencil Buffer temps réel :** Découpe visuelle du sol sans altérer la géométrie ni générer de recalculs CSG coûteux.
+* **Simulation Physique Havok WASM :** Simulation fluide à 60 FPS de dizaines de corps rigides dynamiques subissant gravité et attractions.
+* **Contrôleur Hybride Multi-plateformes :** Pilotage fluide et unifié Souris (raycast / drag), Touch (mobile/tablette) et Clavier (WASD / ZQSD / Flèches).
+* **Entités Avaleuses par Tiers :** Progression naturelle avec 11 types de props (Tiers 1, 2 et 3) avec masse, points et gabarits progressifs.
+* **Suivi de Caméra Lissé :** Cadrage dynamique avec amortissement exponentiel centré sur le trou.
 
 ---
 
-## 🛠️ Local Development
+## 🗺️ Progression & Roadmap
+
+- [x] **Socle technique :** Vite + TypeScript + Babylon.js 7+ + Havok WASM
+- [x] **Rendu & Stencil :** Système de masquage Stencil Buffer (Trou, Sol & Abîme)
+- [x] **Contrôles :** Contrôleur de déplacement hybride unifié (Souris, Touch, Clavier)
+- [x] **Physique & Spawning :** Arène & génération procédurale d'Entités Avaleuses (Tiers 1 à 3)
+- [ ] **Physique d'ingestion :** Déclencheur volumétrique & filtrage dynamique de collision Havok
+- [ ] **Boucle de gameplay :** Ingestion, jauge de croissance & scaling dynamique du Trou
+- [ ] **HUD & Game Loop :** Interface Babylon GUI, mode Chrono 2 min & écrans de jeu
+- [ ] **QA & Polish :** Optimisations finales, feedback visuel & sonore
+
+---
+
+## 🛠️ Développement Local
 
 ```bash
-# Clone the repository
+# Cloner le dépôt
 git clone https://github.com/DevOpsBenjamin/sinkhole.git
 cd sinkhole
 
-# Install dependencies
+# Installer les dépendances
 npm install
 
-# Start development server
+# Démarrer le serveur de développement
 npm run dev
+
+# Tester la compilation TypeScript et le build de production
+npm run build
 ```
 
 ---
 
-## 📄 License
+## 📄 Licence
 
 MIT License © 2026 DevOpsBenjamin
