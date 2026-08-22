@@ -3,10 +3,10 @@
 ## Core Concepts
 
 ### Le Trou (*The Hole / Sinkhole*)
-L'entité principale contrôlée par le joueur. Elle est matérialisée par un ensemble synchronisé comprenant un masque stencil planaire au niveau du sol, un cylindre d'Abîme sous le sol, un éclairage interne 3D, un anneau de bordure et un déclencheur d'ingestion qui se déplacent conjointement sur le plan horizontal (X, Z).
+L'entité principale contrôlée par le joueur. Elle est matérialisée par un ensemble synchronisé comprenant un masque stencil planaire au niveau du sol, un cylindre d'Abîme ouvert sous le sol, des colliders physiques de tube Havok, un éclairage interne 3D, un anneau de bordure et un déclencheur d'ingestion qui se déplacent conjointement sur le plan horizontal (X, Z).
 
 ### L'Abîme (*The Abyss / Hole Interior*)
-Le cylindre 3D texturé avec un dégradé d'illumination vertical, une source de lumière interne (`PointLight`) et des anneaux de profondeur (18 mètres de profondeur), positionné sous le trou, dans lequel tombent, s'illuminent et culbutent les objets avalés pour donner une sensation saisissante de vertige et de profondeur vers le néant.
+Le cylindre 3D 100% ouvert au sommet (`cap: Mesh.NO_CAP`) texturé avec un dégradé d'illumination vertical, une source de lumière interne (`PointLight`), des colliders physiques de parois et des anneaux de profondeur (18 mètres de profondeur), dans lequel tombent, s'illuminent, rebondissent et culbutent les objets avalés jusqu'au fond du puits.
 
 ### Le Masque Stencil (*Stencil Cutout Mask*)
 L'élément de géométrie planaire invisible (`renderingGroupId = 0`) qui écrit la valeur de référence dans le Stencil Buffer afin de découper visuellement le sol au niveau de l'ouverture du trou sans altérer la topologie du maillage de l'arène.

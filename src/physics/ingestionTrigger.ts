@@ -8,7 +8,7 @@ import { SwallowableEntity } from '../entities/swallowableEntity';
 /**
  * Déclencheur volumétrique d'ingestion et gestionnaire de filtrage dynamique Havok.
  * Synchronisé en permanence avec la position et le rayon du Trou.
- * Gère la chute 3D prolongée, les culbutes angulaires et la mise à l'échelle progressive des objets vers l'abîme.
+ * Gère la chute 3D prolongée, les collisions de parois de cylindre, les culbutes angulaires et la disparition en profondeur.
  */
 export class IngestionTrigger {
   private scene: Scene;
@@ -75,7 +75,7 @@ export class IngestionTrigger {
       const dz = entityPos.z - holePos.z;
       const distHorizontal = Math.sqrt(dx * dx + dz * dz);
 
-      // Check depth ingestion threshold (reached bottom of abyss)
+      // Check depth ingestion threshold (reached bottom of abyss -> disappear from cylinder)
       if (entityPos.y <= abyssBottomThreshold) {
         entity.isSwallowed = true;
         this.onEntitySwallowedObservable.notifyObservers(entity);
@@ -94,7 +94,7 @@ export class IngestionTrigger {
             entity.isFallingInHole = true;
 
             // Remove GROUND collision mask so the entity drops freely through ground plane
-            entity.shape.filterCollideMask = COLLISION_MASKS.PROP | COLLISION_MASKS.WALL | COLLISION_MASKS.SWALLOWED;
+            entity.shape.filterCollideMask = COLLISION_MASKS.WALL | COLLISION_MASKS.PROP | COLLISION_MASKS.SWALLOWED;
             entity.shape.filterMembershipMask = COLLISION_MASKS.SWALLOWED;
 
             // Purge Havok static broadphase contact cache
@@ -102,12 +102,12 @@ export class IngestionTrigger {
 
             // Gentle downward plunge entry velocity
             const currentVel = entity.body.getLinearVelocity();
-            entity.body.setLinearVelocity(new Vector3(currentVel.x * 0.5, -1.5, currentVel.z * 0.5));
+            entity.body.setLinearVelocity(new Vector3(currentVel.x * 0.4, -1.2, currentVel.z * 0.4));
             entity.body.setGravityFactor(GAME_CONFIG.INGESTION.DOWNWARD_EXTRA_GRAVITY);
 
             // Apply 3D tumbling torque so prop spins and rolls as it falls
             const mass = entity.definition.mass;
-            const tumbleStrength = 3.0 * mass;
+            const tumbleStrength = 2.5 * mass;
             entity.body.applyAngularImpulse(
               new Vector3(
                 (Math.random() - 0.5) * tumbleStrength,
@@ -126,7 +126,7 @@ export class IngestionTrigger {
 
           const mass = entity.definition.mass;
           const suctionMagnitude = GAME_CONFIG.INGESTION.CENTRIPETAL_FORCE * mass;
-          const downwardPull = -9.81 * mass * 0.4;
+          const downwardPull = -9.81 * mass * 0.35;
           const suctionForce = new Vector3(
             dirX * suctionMagnitude,
             downwardPull,
@@ -134,6 +134,21 @@ export class IngestionTrigger {
           );
 
           entity.body.applyForce(suctionForce, entityPos);
+
+          // Containment inside cylinder: keep within cylinder inner boundary
+          const maxInnerR = holeRadius * 0.92;
+          if (distHorizontal > maxInnerR && entityPos.y < -0.2) {
+            const currentVel = entity.body.getLinearVelocity();
+            const inwardX = -dx / distHorizontal;
+            const inwardZ = -dz / distHorizontal;
+            entity.body.setLinearVelocity(
+              new Vector3(
+                currentVel.x * 0.2 + inwardX * 2.0,
+                currentVel.y,
+                currentVel.z * 0.2 + inwardZ * 2.0
+              )
+            );
+          }
 
           // Progressive visual vortex shrinkage as object drops deep into abyss
           if (entityPos.y < -1.0) {
