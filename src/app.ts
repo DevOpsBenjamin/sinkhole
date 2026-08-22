@@ -2,6 +2,7 @@ import { Engine } from '@babylonjs/core/Engines/engine';
 import { GAME_CONFIG } from './config/constants';
 import { PhysicsManager } from './physics/physicsManager';
 import { SceneManager } from './rendering/sceneManager';
+import { Hole } from './entities/hole';
 
 export class GameApp {
   private canvas: HTMLCanvasElement;
@@ -40,7 +41,7 @@ export class GameApp {
     // Initialize Havok Physics WASM
     await this.physicsManager.initialize(scene);
 
-    // Setup initial test arena
+    // Setup initial test arena with Stencil masking and Hole
     this.sceneManager.setupDemoArena();
 
     // Setup resize listener
@@ -58,6 +59,18 @@ export class GameApp {
   private onResize = (): void => {
     this.engine.resize();
   };
+
+  public getSceneManager(): SceneManager {
+    return this.sceneManager;
+  }
+
+  public getPhysicsManager(): PhysicsManager {
+    return this.physicsManager;
+  }
+
+  public getHole(): Hole | null {
+    return this.sceneManager.getHole();
+  }
 
   public dispose(): void {
     window.removeEventListener('resize', this.onResize);

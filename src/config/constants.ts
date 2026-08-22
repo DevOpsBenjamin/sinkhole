@@ -22,10 +22,16 @@ export const GAME_CONFIG = {
     DIRECTION: new Vector3(-1, -2, -1),
   },
   HOLE: {
-    INITIAL_RADIUS: 1.0,
+    INITIAL_RADIUS: 1.5,
     MIN_RADIUS: 1.0,
-    MAX_RADIUS: 10.0,
-    DEPTH: 10.0,
+    MAX_RADIUS: 12.0,
+    DEPTH: 8.0,
+    TESSELLATION: 64,
+  },
+  RENDERING: {
+    STENCIL_GROUP_ID_MASK: 0,
+    STENCIL_GROUP_ID_WORLD: 1,
+    STENCIL_REF_HOLE: 1,
   },
   ARENA: {
     SIZE: 100,
