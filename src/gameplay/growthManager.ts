@@ -6,7 +6,7 @@ import { GAME_CONFIG } from '../config/constants';
 import { Hole } from '../entities/hole';
 import { SwallowableEntity } from '../entities/swallowableEntity';
 import { IngestionTrigger } from '../physics/ingestionTrigger';
-import { ArenaSpawner } from '../spawning/arenaSpawner';
+import { ArenaSpawner, CONCENTRIC_BIOMES } from '../spawning/arenaSpawner';
 import { PropFactory } from '../factories/propFactory';
 
 export interface ScoreEvent {
@@ -151,10 +151,15 @@ export class GrowthManager {
     if (!this.propFactory) return;
 
     const planetR = GAME_CONFIG.PLANET.RADIUS;
-    const u = Math.random() * 2 - 1;
+    const biome =
+      CONCENTRIC_BIOMES.find((b) =>
+        b.propPool.some((p) => p.type === previousEntity.definition.type)
+      ) ?? CONCENTRIC_BIOMES[0];
+
+    const phi = biome.minColatitude + Math.random() * (biome.maxColatitude - biome.minColatitude);
     const theta = Math.random() * Math.PI * 2;
-    const sinPhi = Math.sqrt(Math.max(0, 1 - u * u));
-    const normal = new Vector3(sinPhi * Math.cos(theta), u, sinPhi * Math.sin(theta)).normalize();
+    const sinPhi = Math.sin(phi);
+    const normal = new Vector3(sinPhi * Math.cos(theta), Math.cos(phi), sinPhi * Math.sin(theta)).normalize();
     const surfacePos = normal.scale(planetR);
     const azimuth = Math.random() * Math.PI * 2;
 

@@ -4,24 +4,41 @@ import { PhysicsShape } from '@babylonjs/core/Physics/v2/physicsShape';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 
 export enum PropTier {
-  TIER_1 = 1, // Micro: cônes, poubelles, caisses, petits arbustes
-  TIER_2 = 2, // Moyen: bancs, lampadaires, voitures, grands arbres
-  TIER_3 = 3, // Grand: camions, abribus, pavillons
-  TIER_4 = 4, // Massif: immeubles (futur)
+  TIER_1 = 1, // Micro: cônes, poubelles, caisses, arbustes, canettes, pots de fleurs (r = 0.8 - 1.2m)
+  TIER_2 = 2, // Moyen: bancs, lampadaires, voitures, grands arbres (r = 1.6 - 2.5m)
+  TIER_3 = 3, // Grand: camions, abribus, pavillons, bus de ville (r = 3.0 - 4.5m)
+  TIER_4 = 4, // Macro: immeubles d'habitation, blocs de bureaux (r = 6.0 - 9.0m)
+  TIER_5 = 5, // Giga-Macro: gratte-ciels colossaux, tours de télécom (r = 12.0 - 18.0m)
 }
 
 export enum PropType {
+  // Tier 1 - Micro
   TRAFFIC_CONE = 'TRAFFIC_CONE',
   TRASH_BIN = 'TRASH_BIN',
   WOODEN_CRATE = 'WOODEN_CRATE',
   SMALL_BUSH = 'SMALL_BUSH',
+  SODA_CAN = 'SODA_CAN',
+  FLOWER_POT = 'FLOWER_POT',
+
+  // Tier 2 - Moyen
   PARK_BENCH = 'PARK_BENCH',
   STREET_LAMP = 'STREET_LAMP',
   SEDAN_CAR = 'SEDAN_CAR',
   LARGE_TREE = 'LARGE_TREE',
+
+  // Tier 3 - Grand
   DELIVERY_TRUCK = 'DELIVERY_TRUCK',
   BUS_STOP = 'BUS_STOP',
   HOUSE_PAVILION = 'HOUSE_PAVILION',
+  CITY_BUS = 'CITY_BUS',
+
+  // Tier 4 - Macro
+  APARTMENT_BUILDING = 'APARTMENT_BUILDING',
+  OFFICE_BLOCK = 'OFFICE_BLOCK',
+
+  // Tier 5 - Giga-Macro
+  SKYSCRAPER_TOWER = 'SKYSCRAPER_TOWER',
+  COMMUNICATION_TOWER = 'COMMUNICATION_TOWER',
 }
 
 export interface PropDefinition {

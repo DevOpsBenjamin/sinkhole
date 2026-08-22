@@ -116,6 +116,10 @@ export class PropFactory {
         return this.buildWoodenCrate(id);
       case PropType.SMALL_BUSH:
         return this.buildSmallBush(id);
+      case PropType.SODA_CAN:
+        return this.buildSodaCan(id);
+      case PropType.FLOWER_POT:
+        return this.buildFlowerPot(id);
 
       // --- TIER 2 (MOYEN) ---
       case PropType.PARK_BENCH:
@@ -134,6 +138,20 @@ export class PropFactory {
         return this.buildBusStop(id);
       case PropType.HOUSE_PAVILION:
         return this.buildHousePavilion(id);
+      case PropType.CITY_BUS:
+        return this.buildCityBus(id);
+
+      // --- TIER 4 (MACRO) ---
+      case PropType.APARTMENT_BUILDING:
+        return this.buildApartmentBuilding(id);
+      case PropType.OFFICE_BLOCK:
+        return this.buildOfficeBlock(id);
+
+      // --- TIER 5 (GIGA-MACRO) ---
+      case PropType.SKYSCRAPER_TOWER:
+        return this.buildSkyscraperTower(id);
+      case PropType.COMMUNICATION_TOWER:
+        return this.buildCommunicationTower(id);
 
       default:
         return this.buildWoodenCrate(id);
@@ -440,5 +458,187 @@ export class PropFactory {
 
     const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(4.5, 3.6, 4.0), this.scene);
     return { mesh: merged, shape, def, heightOffset: 1.8 };
+  }
+
+  private buildSodaCan(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
+    const def: PropDefinition = {
+      type: PropType.SODA_CAN,
+      tier: PropTier.TIER_1,
+      name: 'Canette de soda',
+      points: 8,
+      requiredHoleRadius: 0.8,
+      mass: 0.5,
+      dimensions: new Vector3(0.25, 0.38, 0.25),
+    };
+
+    const mesh = MeshBuilder.CreateCylinder(id, { diameter: 0.25, height: 0.38, tessellation: 12 }, this.scene);
+    mesh.material = this.getOrCreateMaterial('sodaMat', new Color3(0.9, 0.12, 0.15), new Color3(0.5, 0.5, 0.5));
+
+    const shape = new PhysicsShapeCylinder(
+      new Vector3(0, -0.19, 0),
+      new Vector3(0, 0.19, 0),
+      0.125,
+      this.scene
+    );
+
+    return { mesh, shape, def, heightOffset: 0.2 };
+  }
+
+  private buildFlowerPot(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
+    const def: PropDefinition = {
+      type: PropType.FLOWER_POT,
+      tier: PropTier.TIER_1,
+      name: 'Pot de fleurs',
+      points: 12,
+      requiredHoleRadius: 0.85,
+      mass: 1.0,
+      dimensions: new Vector3(0.45, 0.5, 0.45),
+    };
+
+    const pot = MeshBuilder.CreateCylinder(`${id}_pot`, { diameterTop: 0.45, diameterBottom: 0.3, height: 0.4, tessellation: 12 }, this.scene);
+    const flower = MeshBuilder.CreateSphere(`${id}_flower`, { diameter: 0.35, segments: 6 }, this.scene);
+    flower.position.y = 0.22;
+
+    const merged = Mesh.MergeMeshes([pot, flower], true, true, undefined, false, true)!;
+    merged.name = id;
+    merged.material = this.getOrCreateMaterial('flowerMat', new Color3(0.85, 0.35, 0.18));
+
+    const shape = new PhysicsShapeCylinder(
+      new Vector3(0, -0.25, 0),
+      new Vector3(0, 0.25, 0),
+      0.225,
+      this.scene
+    );
+
+    return { mesh: merged, shape, def, heightOffset: 0.25 };
+  }
+
+  private buildCityBus(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
+    const def: PropDefinition = {
+      type: PropType.CITY_BUS,
+      tier: PropTier.TIER_3,
+      name: 'Bus de ville',
+      points: 450,
+      requiredHoleRadius: 4.5,
+      mass: 280,
+      dimensions: new Vector3(6.2, 2.2, 2.0),
+    };
+
+    const bodyMesh = MeshBuilder.CreateBox(`${id}_busBody`, { width: 6.2, height: 1.8, depth: 2.0 }, this.scene);
+    const roofStrip = MeshBuilder.CreateBox(`${id}_busRoof`, { width: 5.8, height: 0.4, depth: 1.9 }, this.scene);
+    roofStrip.position.y = 1.0;
+
+    const merged = Mesh.MergeMeshes([bodyMesh, roofStrip], true, true, undefined, false, true)!;
+    merged.name = id;
+    merged.material = this.getOrCreateMaterial('busMat', new Color3(0.12, 0.62, 0.85), new Color3(0.3, 0.3, 0.3));
+
+    const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(6.2, 2.2, 2.0), this.scene);
+    return { mesh: merged, shape, def, heightOffset: 1.1 };
+  }
+
+  // -------------------------------------------------------------
+  // TIER 4 & 5 BUILDERS (MACRO & GIGA-MACRO)
+  // -------------------------------------------------------------
+
+  private buildApartmentBuilding(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
+    const def: PropDefinition = {
+      type: PropType.APARTMENT_BUILDING,
+      tier: PropTier.TIER_4,
+      name: "Immeuble d'habitation",
+      points: 1200,
+      requiredHoleRadius: 6.5,
+      mass: 800,
+      dimensions: new Vector3(5.5, 7.5, 5.0),
+    };
+
+    const mainBlock = MeshBuilder.CreateBox(`${id}_main`, { width: 5.5, height: 6.8, depth: 5.0 }, this.scene);
+    const topLedge = MeshBuilder.CreateBox(`${id}_ledge`, { width: 3.2, height: 0.7, depth: 3.2 }, this.scene);
+    topLedge.position.y = 3.6;
+
+    const merged = Mesh.MergeMeshes([mainBlock, topLedge], true, true, undefined, false, true)!;
+    merged.name = id;
+    merged.material = this.getOrCreateMaterial('aptMat', new Color3(0.74, 0.65, 0.58), new Color3(0.1, 0.1, 0.1));
+
+    const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(5.5, 7.5, 5.0), this.scene);
+    return { mesh: merged, shape, def, heightOffset: 3.75 };
+  }
+
+  private buildOfficeBlock(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
+    const def: PropDefinition = {
+      type: PropType.OFFICE_BLOCK,
+      tier: PropTier.TIER_4,
+      name: 'Bloc de bureaux',
+      points: 1800,
+      requiredHoleRadius: 8.0,
+      mass: 1400,
+      dimensions: new Vector3(6.5, 9.5, 6.0),
+    };
+
+    const glassTower = MeshBuilder.CreateBox(`${id}_tower`, { width: 6.5, height: 9.0, depth: 6.0 }, this.scene);
+    const crown = MeshBuilder.CreateBox(`${id}_crown`, { width: 6.8, height: 0.5, depth: 6.3 }, this.scene);
+    crown.position.y = 4.6;
+
+    const merged = Mesh.MergeMeshes([glassTower, crown], true, true, undefined, false, true)!;
+    merged.name = id;
+    merged.material = this.getOrCreateMaterial('officeMat', new Color3(0.22, 0.38, 0.58), new Color3(0.5, 0.5, 0.6));
+
+    const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(6.5, 9.5, 6.0), this.scene);
+    return { mesh: merged, shape, def, heightOffset: 4.75 };
+  }
+
+  private buildSkyscraperTower(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
+    const def: PropDefinition = {
+      type: PropType.SKYSCRAPER_TOWER,
+      tier: PropTier.TIER_5,
+      name: 'Gratte-ciel colossal',
+      points: 4000,
+      requiredHoleRadius: 12.0,
+      mass: 3500,
+      dimensions: new Vector3(7.5, 16.0, 7.5),
+    };
+
+    const lower = MeshBuilder.CreateBox(`${id}_lower`, { width: 7.5, height: 8.0, depth: 7.5 }, this.scene);
+    lower.position.y = -4.0;
+    const upper = MeshBuilder.CreateBox(`${id}_upper`, { width: 5.8, height: 6.0, depth: 5.8 }, this.scene);
+    upper.position.y = 3.0;
+    const spire = MeshBuilder.CreateCylinder(`${id}_spire`, { diameterBottom: 0.8, diameterTop: 0.1, height: 2.5, tessellation: 8 }, this.scene);
+    spire.position.y = 7.0;
+
+    const merged = Mesh.MergeMeshes([lower, upper, spire], true, true, undefined, false, true)!;
+    merged.name = id;
+    merged.material = this.getOrCreateMaterial('skyscraperMat', new Color3(0.18, 0.28, 0.42), new Color3(0.6, 0.6, 0.7));
+
+    const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(7.5, 16.0, 7.5), this.scene);
+    return { mesh: merged, shape, def, heightOffset: 8.0 };
+  }
+
+  private buildCommunicationTower(id: string): { mesh: Mesh; shape: PhysicsShape; def: PropDefinition; heightOffset: number } {
+    const def: PropDefinition = {
+      type: PropType.COMMUNICATION_TOWER,
+      tier: PropTier.TIER_5,
+      name: 'Tour de télécommunication',
+      points: 5000,
+      requiredHoleRadius: 14.0,
+      mass: 2200,
+      dimensions: new Vector3(4.5, 20.0, 4.5),
+    };
+
+    const mast = MeshBuilder.CreateCylinder(`${id}_mast`, { diameterBottom: 2.0, diameterTop: 0.5, height: 19.0, tessellation: 6 }, this.scene);
+    const dish = MeshBuilder.CreateCylinder(`${id}_dish`, { diameter: 4.2, height: 0.4, tessellation: 12 }, this.scene);
+    dish.rotation.z = Math.PI / 4;
+    dish.position.y = 5.5;
+
+    const merged = Mesh.MergeMeshes([mast, dish], true, true, undefined, false, true)!;
+    merged.name = id;
+    merged.material = this.getOrCreateMaterial('antennaMat', new Color3(0.85, 0.22, 0.22), new Color3(0.4, 0.4, 0.4));
+
+    const shape = new PhysicsShapeCylinder(
+      new Vector3(0, -10.0, 0),
+      new Vector3(0, 10.0, 0),
+      2.0,
+      this.scene
+    );
+
+    return { mesh: merged, shape, def, heightOffset: 10.0 };
   }
 }
