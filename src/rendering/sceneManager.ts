@@ -21,6 +21,8 @@ import { ArenaSpawner } from '../spawning/arenaSpawner';
 import { SwallowableEntity } from '../entities/swallowableEntity';
 import { IngestionTrigger } from '../physics/ingestionTrigger';
 import { GrowthManager } from '../gameplay/growthManager';
+import { UIManager } from '../ui/uiManager';
+import { GameManager } from '../gameplay/gameManager';
 
 export class SceneManager {
   private scene: Scene;
@@ -35,6 +37,8 @@ export class SceneManager {
   private arenaSpawner: ArenaSpawner | null = null;
   private ingestionTrigger: IngestionTrigger | null = null;
   private growthManager: GrowthManager | null = null;
+  private uiManager: UIManager | null = null;
+  private gameManager: GameManager | null = null;
 
   constructor(private engine: Engine) {
     this.scene = new Scene(this.engine);
@@ -119,7 +123,7 @@ export class SceneManager {
   }
 
   /**
-   * Crée l'arène de jeu, initialise le Trou, son contrôleur, les entités, le trigger d'ingestion et le gestionnaire de croissance.
+   * Crée l'arène de jeu, initialise le Trou, son contrôleur, les entités, le trigger d'ingestion, le gestionnaire de croissance, l'UI et la boucle de jeu.
    */
   public setupDemoArena(): void {
     // 1. Urban Arena Ground with Stencil test (only renders where stencil != 1)
@@ -187,6 +191,20 @@ export class SceneManager {
       this.ingestionTrigger,
       this.propFactory
     );
+
+    // 7. Initialize UIManager for 2D Babylon GUI (Start Menu, Live HUD, Game Over)
+    this.uiManager = new UIManager(this.scene);
+
+    // 8. Initialize GameManager to orchestrate states, 2 min timer and replay loop
+    this.gameManager = new GameManager(
+      this.scene,
+      this.hole,
+      this.holeController,
+      this.growthManager,
+      this.uiManager,
+      this.arenaSpawner,
+      this.propFactory
+    );
   }
 
   public getScene(): Scene {
@@ -223,6 +241,14 @@ export class SceneManager {
 
   public getGrowthManager(): GrowthManager | null {
     return this.growthManager;
+  }
+
+  public getUIManager(): UIManager | null {
+    return this.uiManager;
+  }
+
+  public getGameManager(): GameManager | null {
+    return this.gameManager;
   }
 
   public getEntities(): SwallowableEntity[] {
